@@ -27,5 +27,5 @@ print('pagerank', nx.pagerank(G))
 # HITS
 print('HITS', nx.hits(G, tol=0.00001))
 # 绘制图
-nx.draw(G, node_size=10, font_size=10, font_color="blue", font_weight="bold", with_labels=True)
+nx.draw(G, with_labels=True)
 plt.show()
