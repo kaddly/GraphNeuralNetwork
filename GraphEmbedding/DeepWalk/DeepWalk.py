@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from .data_utils import deepwalk_walk
 
 
 def skip_gram(center, contexts_and_negatives, embed_v, embed_u):
@@ -15,3 +16,12 @@ class Word2vec:
 
     def __call__(self, center, context_negative):
         return skip_gram(center, context_negative, self.net[0], self.net[1])
+
+
+class DeepWalk:
+    def __init__(self, graph, walk_length, num_walks, workers=1):
+        self.graph = graph
+        self.w2v_model = None
+        self._embedding = {}
+
+        self.walker
