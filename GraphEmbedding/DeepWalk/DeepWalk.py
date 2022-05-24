@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from .data_utils import deepwalk_walk
+from .data_utils import RandomWalker
 
 
 def skip_gram(center, contexts_and_negatives, embed_v, embed_u):
@@ -24,4 +24,9 @@ class DeepWalk:
         self.w2v_model = None
         self._embedding = {}
 
-        self.walker
+        self.walker = RandomWalker(graph)
+        self.sentences = self.walker.simulate_walks(num_walks=num_walks, walk_length=walk_length, workers=workers,
+                                                    verbose=1)
+
+    def train(self, embed_size=128, window_size=5, workers=3, iter=5, **kwargs):
+        pass
