@@ -19,9 +19,9 @@ class Word2vec:
 
 
 class DeepWalk:
-    def __init__(self, graph, walk_length, num_walks, workers=1):
+    def __init__(self, graph, walk_length, num_walks, vocab_size, embed_size, workers=1):
         self.graph = graph
-        self.w2v_model = None
+        self.w2v_model = Word2vec(vocab_size, embed_size)
         self._embedding = {}
 
         self.walker = RandomWalker(graph)

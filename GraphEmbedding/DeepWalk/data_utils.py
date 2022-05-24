@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
 import os
+from .token_utils import Vocab
 from joblib import Parallel, delayed
 import itertools
 import random
