@@ -1,7 +1,7 @@
 import torch
 from torch import nn
-from .data_utils import RandomWalker, load_data_wiki
-from .train_eval import train
+from data_utils import RandomWalker, load_data_wiki
+from train_eval import train
 
 
 def skip_gram(center, contexts_and_negatives, embed_v, embed_u):

@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
 import math
-from .token_utils import Vocab, count_corpus
+from token_utils import Vocab, count_corpus
 from joblib import Parallel, delayed
 import itertools
 import random
