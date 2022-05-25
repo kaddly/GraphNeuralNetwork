@@ -75,10 +75,6 @@ def subsample(sentences, vocab):
     return ([[token for token in line if keep(token)] for line in sentences], counter)
 
 
-# sentences = read_ptb()
-# vocab = Vocab(sentences, min_freq=10)
-# subsampled, counter = subsample(sentences, vocab)
-# show_list_len_pair_hist(['origin', 'subsampled'], '# tokens per sentence', 'count', sentences, subsampled)
 def get_centers_and_contexts(corpus, max_window_size):
     """返回跳元模型中的中心词与上下文单词"""
     centers, context = [], []
