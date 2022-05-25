@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from .data_utils import RandomWalker
+from .train_eval import train
 
 
 def skip_gram(center, contexts_and_negatives, embed_v, embed_u):
@@ -19,9 +20,9 @@ class Word2vec:
 
 
 class DeepWalk:
-    def __init__(self, graph, walk_length, num_walks, vocab_size, embed_size, workers=1):
+    def __init__(self, graph, walk_length, num_walks, workers=1):
         self.graph = graph
-        self.w2v_model = Word2vec(vocab_size, embed_size)
+        self.w2v_model = Word2vec
         self._embedding = {}
 
         self.walker = RandomWalker(graph)
