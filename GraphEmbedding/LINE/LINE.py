@@ -16,4 +16,4 @@ class LINE(nn.Module):
         second_v_i = self.second_emb(v_i)
         context_v_j = self.context_emb(v_j)
 
-        return torch.bmm(first_v_i, first_v_j.permute(1, 0)), torch.bmm(second_v_i, context_v_j.permute(1, 0))
+        return torch.bmm(first_v_i, first_v_j.permute(0, 2, 1)), torch.bmm(second_v_i, context_v_j.permute(0, 2, 1))
