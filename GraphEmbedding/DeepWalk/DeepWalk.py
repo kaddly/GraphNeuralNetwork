@@ -43,6 +43,6 @@ class DeepWalk:
             print("model not train")
             return {}
         for word in self.graph.nodes():
-            self._embeddings[self.vocab[word]] = self.w2v_model.net[0][word]
+            self._embeddings[self.vocab[word]] = self.w2v_model.net[0](word)
 
         return self._embeddings
