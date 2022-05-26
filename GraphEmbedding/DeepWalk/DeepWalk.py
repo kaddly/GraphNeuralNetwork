@@ -29,7 +29,7 @@ class DeepWalk:
                                                     verbose=1)
 
     def train(self, lr=0.002, embed_size=128, window_size=5, num_epochs=5):
-        data_iter, self.vocab = load_data_wiki(self.sentences, batch_size=128, max_window_size=window_size,
+        data_iter, self.vocab = load_data_wiki(self.sentences, batch_size=16, max_window_size=window_size,
                                                num_noise_words=5)
         model = Word2vec(len(self.vocab), embed_size)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
