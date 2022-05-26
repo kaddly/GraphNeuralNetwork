@@ -12,3 +12,8 @@ class LINE(nn.Module):
     def forward(self, v_i, v_j):
         first_v_i = self.first_emb(v_i)
         first_v_j = self.first_emb(v_j)
+
+        second_v_i = self.second_emb(v_i)
+        context_v_j = self.context_emb(v_j)
+
+        return torch.bmm(first_v_i, first_v_j.permute(0, 2, 1)), torch.bmm(second_v_i, context_v_j.permute(0, 2, 1))
