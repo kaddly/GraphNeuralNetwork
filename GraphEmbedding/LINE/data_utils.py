@@ -1,8 +1,10 @@
 import os
+import numpy as np
 import random
+import math
 import torch
 import networkx as nx
-from graph_utils import preprocess_nxgraph, RandomGenerator
+from graph_utils import preprocess_nxgraph
 
 
 def read_wiki(data_dir):
@@ -28,16 +30,16 @@ class RandomGenerator:
         return self.candidates[self.i - 1]
 
 
-def gen_sample_data(G, power):
+def get_sampling_weights(G, power):
     idx2node, node2idx = preprocess_nxgraph(G)
     node_size = G.number_of_nodes()
-    node_degree = torch.zeros(node_size)
+    node_degree = np.zeros(node_size)
+    # 求度
     for edge in G.edges():
         node_degree[node2idx[edge[0]]] += G[edge[0]][edge[1]].get('weight', 1.0)
-    total_sum = torch.sum(torch.Tensor([torch.pow(node_degree[i], power) for i in range(node_size)]))
-    norm_prob = torch.Tensor([torch.pow(node_degree[j], power) / total_sum for j in range(node_size)])
-    generator = RandomGenerator(norm_prob)
+    total_sum = sum([math.pow(node_degree[i], power) for i in range(node_size)])
+    norm_prob = [float(math.pow(node_degree[j], power)) / total_sum for j in range(node_size)]
+    return norm_prob
 
 
-
-gen_sample_data(read_wiki("../data/wiki/Wiki_edgelist.txt"), 0.75)
+print(sum(get_sampling_weights(read_wiki("../data/wiki/Wiki_edgelist.txt"), 0.75)))
