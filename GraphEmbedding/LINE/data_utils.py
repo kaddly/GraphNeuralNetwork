@@ -1,4 +1,5 @@
 import os
+import random
 import torch
 import networkx as nx
 from graph_utils import preprocess_nxgraph
@@ -15,7 +16,7 @@ def gen_sample_data(G, power):
     for edge in G.edges():
         node_degree[node2idx[edge[0]]] += G[edge[0]][edge[1]].get('weight', 1.0)
     total_sum = torch.sum(torch.Tensor([torch.pow(node_degree[i], power) for i in range(node_size)]))
-    norm_prob = torch.Tensor([float(torch.pow(node_degree[j], power)) / total_sum for j in range(node_size)])
+    norm_prob = torch.Tensor([torch.pow(node_degree[j], power) / total_sum for j in range(node_size)])
     print(norm_prob)
 
 
