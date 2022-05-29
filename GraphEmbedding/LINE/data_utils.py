@@ -31,11 +31,12 @@ class RandomGenerator:
 
 
 def get_centers_and_contexts(G):
-    nodes, contexts = [], []
+    nodes, contexts, labels = [], [], []
     for node in G.nodes():
         nodes.append(int(node))
         contexts.append(list(map(int, G.neighbors(node))))
-    return nodes, contexts
+        labels.append([G[node][node_nb].get('weight', 1.0) for node_nb in G.neighbors(node)])
+    return nodes, contexts, labels
 
 
 def get_sampling_weights(G, node2idx, power):
@@ -66,15 +67,15 @@ def get_negative(G, all_contexts, idx2node, node2idx, K):
 
 def batchify(data):
     """返回带有负采样的跳元模型的⼩批量样本"""
-    max_len = max(len(c) + len(n) for _, c, n in data)
+    max_len = max(len(c) + len(n) for _, c, _, n in data)
     print(max_len)
     centers, contexts_negatives, masks, labels = [], [], [], []
-    for center, context, negative in data:
+    for center, context, label, negative in data:
         cur_len = len(context) + len(negative)
         centers += [center]
         contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
         masks += [[1] * cur_len + [0] * (max_len - cur_len)]
-        labels += [[1] * len(context) + [0] * (max_len - len(context))]
+        labels += [label + [0.0] * (max_len - len(context))]
     return (torch.tensor(centers).reshape((-1, 1))
             , torch.tensor(contexts_negatives)
             , torch.tensor(masks)
@@ -82,14 +83,15 @@ def batchify(data):
 
 
 class Wiki_dataset(Dataset):
-    def __init__(self, centers, contexts, negatives):
-        assert len(centers) == len(contexts) == len(negatives)
+    def __init__(self, centers, contexts, labels, negatives):
+        assert len(centers) == len(contexts) == len(negatives) == len(labels)
         self.centers = centers
         self.contexts = contexts
+        self.labels = labels
         self.negatives = negatives
 
     def __getitem__(self, item):
-        return self.centers[item], self.negatives[item], self.contexts[item]
+        return self.centers[item], self.contexts[item], self.labels[item], self.negatives[item]
 
     def __len__(self):
         return len(self.centers)
@@ -98,8 +100,8 @@ class Wiki_dataset(Dataset):
 def load_data_wiki(data_dir, batch_size, num_noise_words):
     G = read_wiki(data_dir)
     idx2node, node2idx = preprocess_nxgraph(G)
-    nodes, all_contexts = get_centers_and_contexts(G)
+    nodes, all_contexts, all_labels = get_centers_and_contexts(G)
     all_negatives = get_negative(G, all_contexts, idx2node, node2idx, num_noise_words)
-    dataset = Wiki_dataset(nodes, all_contexts, all_negatives)
+    dataset = Wiki_dataset(nodes, all_contexts, all_labels, all_negatives)
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
     return idx2node, node2idx, data_iter
