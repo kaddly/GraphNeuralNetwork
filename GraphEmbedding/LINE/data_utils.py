@@ -67,31 +67,34 @@ def get_negative(G, all_contexts, idx2node, node2idx, K):
 
 def batchify(data):
     """返回带有负采样的跳元模型的⼩批量样本"""
-    max_len = max(len(c) + len(n) for _, c, _, n in data)
-    print(max_len)
-    centers, contexts_negatives, masks, labels = [], [], [], []
-    for center, context, label, negative in data:
+    max_len = max(len(c) + len(n) for _, c, _, n, _ in data)
+    centers, contexts_negatives, masks, labels, weights = [], [], [], [], []
+    for center, context, label, negative, weight in data:
         cur_len = len(context) + len(negative)
         centers += [center]
         contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
         masks += [[1] * cur_len + [0] * (max_len - cur_len)]
         labels += [label + [0.0] * (max_len - len(context))]
+        weights += [weight]
     return (torch.tensor(centers).reshape((-1, 1))
             , torch.tensor(contexts_negatives)
             , torch.tensor(masks)
-            , torch.tensor(labels))
+            , torch.tensor(labels)
+            , torch.tensor(weights))
 
 
 class Wiki_dataset(Dataset):
-    def __init__(self, centers, contexts, labels, negatives):
-        assert len(centers) == len(contexts) == len(negatives) == len(labels)
+    def __init__(self, centers, contexts, labels, negatives, pd):
+        assert len(centers) == len(contexts) == len(negatives) == len(labels) == len(pd)
         self.centers = centers
         self.contexts = contexts
         self.labels = labels
         self.negatives = negatives
+        self.weight = [pd[str(center)] for center in centers]
+        print("load data:"+str(len(centers)))
 
     def __getitem__(self, item):
-        return self.centers[item], self.contexts[item], self.labels[item], self.negatives[item]
+        return self.centers[item], self.contexts[item], self.labels[item], self.negatives[item], self.weight[item]
 
     def __len__(self):
         return len(self.centers)
@@ -102,6 +105,6 @@ def load_data_wiki(data_dir, batch_size, num_noise_words):
     idx2node, node2idx = preprocess_nxgraph(G)
     nodes, all_contexts, all_labels = get_centers_and_contexts(G)
     all_negatives = get_negative(G, all_contexts, idx2node, node2idx, num_noise_words)
-    dataset = Wiki_dataset(nodes, all_contexts, all_labels, all_negatives)
+    dataset = Wiki_dataset(nodes, all_contexts, all_labels, all_negatives, nx.pagerank(G))
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
-    return idx2node, node2idx, data_iter, nx.pagerank(G)
+    return idx2node, node2idx, data_iter

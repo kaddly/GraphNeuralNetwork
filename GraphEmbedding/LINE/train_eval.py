@@ -14,7 +14,7 @@ class SigmoidBCELoss(nn.Module):
         return out.mean(dim=1)
 
 
-def train(net, data_iter, pd, lr, num_epochs, devices):
+def train(net, data_iter, lr, num_epochs, devices):
     def init_weights(m):
         if type(m) == nn.Embedding:
             nn.init.xavier_uniform_(m.weight)
@@ -42,21 +42,21 @@ def train(net, data_iter, pd, lr, num_epochs, devices):
         print('Epoch [{}/{}]'.format(epoch + 1, num_epochs))
         for i, batch in enumerate(data_iter):
             optimizer.zero_grad()
-            center, context_negative, mask, label = [x.to(devices[0]) for x in batch]
+            center, context_negative, mask, label, weight = [x.to(devices[0]) for x in batch]
             first_pred, second_pred = net(center, context_negative)
             f_l = (loss(first_pred.reshape(label.shape).float(), label.float(), mask) / mask.sum(axis=1) * mask.shape[
                 1])
             s_l = (loss(second_pred.reshape(label.shape).float(), label.float(), mask) / mask.sum(axis=1) * mask.shape[
                 1])
-            l = f_l + s_l * pd(center)
+            l = f_l + s_l * weight
             l.sum().backward()
             optimizer.step()
-            if total_batch % 50 == 0:
+            if total_batch % 20 == 0:
                 with torch.no_grad():
                     l_sum = l.sum()
                     l_nums = l.numel()
                 if l_sum < dev_best_loss:
-                    torch.save(net.state_dict(), parameter_path)
+                    torch.save(net.state_dict(), os.path.join(parameter_path, model_file+'.ckpt'))
                     dev_best_loss = l_sum
                     improve = '*'
                     last_improve = total_batch
