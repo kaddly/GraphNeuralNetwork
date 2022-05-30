@@ -104,4 +104,4 @@ def load_data_wiki(data_dir, batch_size, num_noise_words):
     all_negatives = get_negative(G, all_contexts, idx2node, node2idx, num_noise_words)
     dataset = Wiki_dataset(nodes, all_contexts, all_labels, all_negatives)
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
-    return idx2node, node2idx, data_iter
+    return idx2node, node2idx, data_iter, nx.pagerank(G)
