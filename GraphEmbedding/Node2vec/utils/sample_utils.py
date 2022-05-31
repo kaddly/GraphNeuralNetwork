@@ -39,6 +39,7 @@ def create_alias_table(Prob_val):
         else:
             large_queue.append(large_index)
 
+    # 近似采样
     while large_queue:
         large_idx = large_queue.pop()
         accept_prob[large_idx] = 1
