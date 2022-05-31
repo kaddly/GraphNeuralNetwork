@@ -62,3 +62,11 @@ def alias_smaple(accept_prob, alias_index):
         return random_num1
     else:
         alias_index[random_num1]
+
+
+class AliasGenerator:
+    def __init__(self, sampling_weights):
+        self.accept_prob, self.alias_index = create_alias_table(sampling_weights)
+
+    def draw(self):
+        return alias_smaple(self.accept_prob, self.alias_index)
