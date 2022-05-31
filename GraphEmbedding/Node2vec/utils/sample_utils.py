@@ -61,4 +61,4 @@ class AliasGenerator:
         self.accept_prob, self.alias_index = create_alias_table(sampling_weights)
 
     def draw(self):
-        return alias_smaple(self.accept_prob, self.alias_index)
+        return alias_sample(self.accept_prob, self.alias_index)
