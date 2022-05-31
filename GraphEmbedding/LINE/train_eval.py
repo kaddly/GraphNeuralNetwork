@@ -56,7 +56,7 @@ def train(net, data_iter, lr, num_epochs, devices):
                     l_sum = l.sum()
                     l_nums = l.numel()
                 if l_sum < dev_best_loss:
-                    torch.save(net.state_dict(), os.path.join(parameter_path, model_file+'.ckpt'))
+                    torch.save(net.state_dict(), os.path.join(parameter_path, model_file + '.ckpt'))
                     dev_best_loss = l_sum
                     improve = '*'
                     last_improve = total_batch
@@ -73,3 +73,20 @@ def train(net, data_iter, lr, num_epochs, devices):
                 break
         if flag:
             break
+
+
+def get_embedding(net, G, node2idx):
+    emb = {}
+    if not os.path.exists('../saved_dict/LINE/LINE.ckpt'):
+        print('please train before!')
+        return
+    net.load_state_dict(torch.load('../saved_dict/LINE/LINE.ckpt'), False)
+    net.eval()
+    all_nodes = G.nodes()
+    nodes = [node2idx[node] for node in all_nodes]
+    nodes = torch.tensor(nodes)
+    f_emb = net.first_emb(nodes)
+    s_emb = net.second_emb(nodes)
+    for node, embedding in zip(all_nodes, torch.cat([f_emb, s_emb], dim=-1)):
+        emb[node] = embedding.tolist()
+    return emb

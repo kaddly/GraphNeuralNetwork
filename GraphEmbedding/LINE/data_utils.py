@@ -30,12 +30,16 @@ class RandomGenerator:
         return self.candidates[self.i - 1]
 
 
-def get_centers_and_contexts(G):
+def get_centers_and_contexts(G, node2idx):
     nodes, contexts, labels = [], [], []
     for node in G.nodes():
-        nodes.append(int(node))
-        contexts.append(list(map(int, G.neighbors(node))))
-        labels.append([G[node][node_nb].get('weight', 1.0) for node_nb in G.neighbors(node)])
+        nodes.append(node2idx[node])
+        context, label = [], []
+        for node_nb in G.neighbors(node):
+            context.append(node2idx[node_nb])
+            label.append(G[node][node_nb].get('weight', 1.0))
+        contexts.append(context)
+        labels.append(label)
     return nodes, contexts, labels
 
 
@@ -50,7 +54,7 @@ def get_sampling_weights(G, node2idx, power):
     return norm_prob
 
 
-def get_negative(G, all_contexts, idx2node, node2idx, K):
+def get_negative(G, all_contexts, node2idx, K):
     sampling_weights = get_sampling_weights(G, node2idx, 0.75)
     all_negatives = []
     generator = RandomGenerator(sampling_weights)
@@ -59,8 +63,8 @@ def get_negative(G, all_contexts, idx2node, node2idx, K):
         while len(negatives) < len(contexts) * K:
             neg = generator.draw()
             # 噪声词不能是上下⽂词
-            if idx2node[neg] not in contexts:
-                negatives.append(idx2node[neg])
+            if neg not in contexts:
+                negatives.append(neg)
         all_negatives.append(negatives)
     return all_negatives
 
@@ -103,8 +107,8 @@ class Wiki_dataset(Dataset):
 def load_data_wiki(data_dir, batch_size, num_noise_words):
     G = read_wiki(data_dir)
     idx2node, node2idx = preprocess_nxgraph(G)
-    nodes, all_contexts, all_labels = get_centers_and_contexts(G)
-    all_negatives = get_negative(G, all_contexts, idx2node, node2idx, num_noise_words)
+    nodes, all_contexts, all_labels = get_centers_and_contexts(G, node2idx)
+    all_negatives = get_negative(G, all_contexts, node2idx, num_noise_words)
     dataset = Wiki_dataset(nodes, all_contexts, all_labels, all_negatives, nx.pagerank(G))
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
-    return idx2node, node2idx, data_iter
+    return idx2node, node2idx, data_iter, G
