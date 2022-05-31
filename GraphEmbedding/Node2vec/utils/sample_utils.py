@@ -41,7 +41,7 @@ def create_alias_table(Prob_val):
     return accept_prob, alias_index
 
 
-def alias_smaple(accept_prob, alias_index):
+def alias_sample(accept_prob, alias_index):
     N = len(accept_prob)
 
     # 扔第一个骰子，产生第一个1~N的随机数,决定落在哪一列
