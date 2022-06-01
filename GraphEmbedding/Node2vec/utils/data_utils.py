@@ -4,6 +4,8 @@ import networkx as nx
 from sample_utils import alias_sample, create_alias_table
 from joblib import Parallel, delayed
 from graph_utils import preprocess_nxgraph, partition_num
+import itertools
+import random
 
 
 def read_flight(data_dir):
