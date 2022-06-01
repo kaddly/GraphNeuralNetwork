@@ -83,6 +83,7 @@ def load_flight_data(data_dir, batch_size, num_walks, walk_length, workers, max_
     all_contexts = walker.simulate_walks(num_walks=num_walks, walk_length=walk_length, workers=workers)
     print('load contexts:'+str(len(all_contexts)))
     subsampled, counter = subsample(all_contexts)
+    print('load subsampled contexts:' + str(len(subsampled)))
     corpus = [[node2idx[token] for token in line] for line in subsampled]
     all_centers, all_contexts = get_centers_and_contexts(corpus, max_window_size)
     all_negatives = get_negative(all_contexts, idx2node, counter, num_noise_words)
