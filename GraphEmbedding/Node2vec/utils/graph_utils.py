@@ -1,3 +1,6 @@
+import collections
+
+
 def preprocess_nxgraph(graph):
     node2idx = {}
     idx2node = []
@@ -7,3 +10,11 @@ def preprocess_nxgraph(graph):
         idx2node.append(int(node))
         node_size += 1
     return idx2node, node2idx
+
+
+def count_corpus(tokens):
+    """统计词元的频率"""
+    # 这里的tokens是1d或者2d列表
+    if len(tokens) == 0 or isinstance(tokens[0], list):
+        tokens = [token for line in tokens for token in line]
+    return collections.Counter(tokens)

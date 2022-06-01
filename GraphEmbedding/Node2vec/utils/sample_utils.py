@@ -53,17 +53,12 @@ def create_alias_table(Prob_val):
 
 def alias_sample(accept_prob, alias_index):
     N = len(accept_prob)
-
-    # 扔第一个骰子，产生第一个1~N的随机数,决定落在哪一列
-    random_num1 = int(np.floor(np.random.rand() * N))
-    # 扔第二个骰子，产生0~1之间的随机数，判断与accept_prob[random_num1]的大小
-    random_num2 = np.random.rand()
-
-    # 如果小于Prab[i]，则采样i，如果大于Prab[i]，则采样Alias[i]
-    if random_num2 < accept_prob[random_num1]:
-        return random_num1
+    i = int(np.random.random() * N)
+    r = np.random.random()
+    if r < accept_prob[i]:
+        return i
     else:
-        alias_index[random_num1]
+        return alias_index[i]
 
 
 class AliasGenerator:
@@ -108,7 +103,7 @@ class RandomWalker:
 
         nodes = list(G.nodes())
 
-        results = Parallel(n_jobs=workers, verbose=verbose, )(
+        results = Parallel(n_jobs=workers, verbose=verbose)(
             delayed(self._simulate_walks)(nodes, num, walk_length) for num in
             partition_num(num_walks, workers))
 
@@ -173,3 +168,22 @@ class RandomWalker:
 
         self.alias_edges = alias_edges
         self.alias_nodes = alias_nodes
+
+
+class RandomGenerator:
+    """根据n个采样权重在{1,...,n}中随机抽取"""
+
+    def __init__(self, sampling_weights):
+        # Exclude
+        self.population = list(range(1, len(sampling_weights) + 1))
+        self.sampling_weights = sampling_weights
+        self.candidates = []
+        self.i = 0
+
+    def draw(self):
+        if self.i == len(self.candidates):
+            # 缓存k个随机采样结果
+            self.candidates = random.choices(self.population, self.sampling_weights, k=10000)
+            self.i = 0
+        self.i += 1
+        return self.candidates[self.i - 1]
