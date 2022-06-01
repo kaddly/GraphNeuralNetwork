@@ -75,12 +75,13 @@ def batchify(data):
             , torch.tensor(labels))
 
 
-def load_flight(data_dir, batch_size, num_walks, walk_length, workers, max_window_size, num_noise_words):
+def load_flight_data(data_dir, batch_size, num_walks, walk_length, workers, max_window_size, num_noise_words):
     G = read_flight(data_dir)
     idx2node, node2idx = preprocess_nxgraph(G)
     walker = RandomWalker(G, p=0.25, q=2)
     walker.preprocess_transition_probs()
     all_contexts = walker.simulate_walks(num_walks=num_walks, walk_length=walk_length, workers=workers)
+    print('load contexts:'+str(len(all_contexts)))
     subsampled, counter = subsample(all_contexts)
     corpus = [[node2idx[token] for token in line] for line in subsampled]
     all_centers, all_contexts = get_centers_and_contexts(corpus, max_window_size)
@@ -100,8 +101,16 @@ def load_flight(data_dir, batch_size, num_walks, walk_length, workers, max_windo
             return len(self.centers)
 
     dataset = PTBDataset(all_centers, all_contexts, all_negatives)
-    data_iter = torch.utils.data.DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
+    data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
     return data_iter, idx2node, node2idx
 
 
-load_flight('../../data/flight/brazil-airports.edgelist', batch_size=32, num_noise_words=5)
+data_iter, idx2node, node2idx = load_flight_data('../../data/flight/brazil-airports.edgelist', batch_size=32, num_walks=80, walk_length=10, workers=4, max_window_size=5, num_noise_words=5)
+
+for i, batch in data_iter:
+    print(batch[0])
+    print(batch[1])
+    print(batch[2])
+    print(batch[3])
+    if i > 3:
+        break
