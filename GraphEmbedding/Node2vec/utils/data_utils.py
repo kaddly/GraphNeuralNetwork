@@ -2,9 +2,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 import networkx as nx
 from sample_utils import RandomWalker
-from joblib import Parallel, delayed
 from graph_utils import preprocess_nxgraph
-import itertools
 import random
 
 
