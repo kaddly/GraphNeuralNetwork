@@ -1,8 +1,8 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
 import networkx as nx
-from sample_utils import RandomWalker, RandomGenerator
-from graph_utils import preprocess_nxgraph, count_corpus
+from .sample_utils import RandomWalker, RandomGenerator
+from .graph_utils import preprocess_nxgraph, count_corpus
 import random
 import math
 
@@ -86,7 +86,9 @@ def load_flight_data(data_dir, batch_size, num_walks, walk_length, workers, max_
     print('load subsampled contexts:' + str(len(subsampled)))
     corpus = [[node2idx[token] for token in line] for line in subsampled]
     all_centers, all_contexts = get_centers_and_contexts(corpus, max_window_size)
+    print('load all_centers:'+str(len(all_centers)))
     all_negatives = get_negative(all_contexts, idx2node, counter, num_noise_words)
+    print('load all_negatives:' + str(len(all_negatives)))
 
     class PTBDataset(Dataset):
         def __init__(self, centers, contexts, negatives):
@@ -104,14 +106,3 @@ def load_flight_data(data_dir, batch_size, num_walks, walk_length, workers, max_
     dataset = PTBDataset(all_centers, all_contexts, all_negatives)
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
     return data_iter, idx2node, node2idx
-
-
-data_iter, idx2node, node2idx = load_flight_data('../../data/flight/brazil-airports.edgelist', batch_size=32, num_walks=80, walk_length=10, workers=4, max_window_size=5, num_noise_words=5)
-
-for i, batch in data_iter:
-    print(batch[0])
-    print(batch[1])
-    print(batch[2])
-    print(batch[3])
-    if i > 3:
-        break
