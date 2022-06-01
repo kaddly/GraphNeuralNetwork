@@ -7,10 +7,3 @@ def preprocess_nxgraph(graph):
         idx2node.append(int(node))
         node_size += 1
     return idx2node, node2idx
-
-
-def partition_num(num, workers):
-    if num % workers == 0:
-        return [num // workers] * workers
-    else:
-        return [num // workers] * workers + [num % workers]
