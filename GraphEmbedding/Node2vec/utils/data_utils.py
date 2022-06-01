@@ -75,12 +75,12 @@ def batchify(data):
             , torch.tensor(labels))
 
 
-def load_flight(data_dir, batch_size, max_window_size, num_noise_words):
+def load_flight(data_dir, batch_size, num_walks, walk_length, workers, max_window_size, num_noise_words):
     G = read_flight(data_dir)
     idx2node, node2idx = preprocess_nxgraph(G)
     walker = RandomWalker(G, p=0.25, q=2)
     walker.preprocess_transition_probs()
-    all_contexts = walker.simulate_walks(num_walks=1024, walk_length=10, workers=4)
+    all_contexts = walker.simulate_walks(num_walks=num_walks, walk_length=walk_length, workers=workers)
     subsampled, counter = subsample(all_contexts)
     corpus = [[node2idx[token] for token in line] for line in subsampled]
     all_centers, all_contexts = get_centers_and_contexts(corpus, max_window_size)
