@@ -175,7 +175,7 @@ class RandomGenerator:
 
     def __init__(self, sampling_weights):
         # Exclude
-        self.population = list(range(1, len(sampling_weights) + 1))
+        self.population = list(range(0, len(sampling_weights)))
         self.sampling_weights = sampling_weights
         self.candidates = []
         self.i = 0

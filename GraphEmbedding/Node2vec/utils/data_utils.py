@@ -46,7 +46,7 @@ def get_centers_and_contexts(corpus, max_window_size):
 def get_negative(all_contexts, idx2node, counter, K):
     """返回负采样中的噪声词"""
     # 索引为1、2、...（索引0是词表中排除的未知标记）
-    sampling_weights = [counter[idx2node[i]] ** 0.75 for i in range(1, len(idx2node))]
+    sampling_weights = [counter[idx2node[i]] ** 0.75 for i in range(0, len(idx2node))]
     all_negatives, generator = [], RandomGenerator(sampling_weights)
     for contexts in all_contexts:
         negatives = []
@@ -105,4 +105,4 @@ def load_flight_data(data_dir, p, q, batch_size, num_walks, walk_length, workers
 
     dataset = PTBDataset(all_centers, all_contexts, all_negatives)
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
-    return data_iter, idx2node, node2idx
+    return data_iter, idx2node, node2idx, G

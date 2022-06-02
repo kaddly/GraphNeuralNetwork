@@ -71,11 +71,17 @@ def train(model, data_iter, lr, num_epochs, device):
             break
 
 
-def get_similar_tokens(query_token, k, embed, vocab):
-    W = embed.weight.data
-    x = W[vocab[query_token]]
-    # 计算余弦相似性。增加1e-9以获得数值稳定性
-    cos = torch.mv(W, x) / torch.sqrt(torch.sum(W * W, dim=1) * torch.sum(x * x) + 1e-9)
-    topk = torch.topk(cos, k=k + 1)[1].cpu().numpy().astype('int32')
-    for i in topk[1:]:  # 删除输⼊词
-        print(f'cosine sim={float(cos[i]):.3f}: {vocab.to_tokens(i)}')
+def get_embedding(model, G, node2idx):
+    emb = {}
+    if not os.path.exists('../saved_dict/Node2Vec/Node2Vec.ckpt'):
+        print('please train before!')
+        return
+    model.net.load_state_dict(torch.load('../saved_dict/Node2Vec/Node2Vec.ckpt'), False)
+    model.net.eval()
+    all_nodes = G.nodes()
+    nodes = [node2idx[node] for node in all_nodes]
+    nodes = torch.tensor(nodes).cuda()
+    all_embedding = model.net[0](nodes)
+    for node, embedding in zip(all_nodes, all_embedding):
+        emb[node] = embedding.cpu().tolist()
+    return emb
