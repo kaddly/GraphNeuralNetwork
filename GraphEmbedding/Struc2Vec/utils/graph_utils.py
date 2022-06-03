@@ -1,4 +1,5 @@
 import collections
+from collections import deque
 
 
 def preprocess_nxgraph(graph):
@@ -18,3 +19,45 @@ def count_corpus(tokens):
     if len(tokens) == 0 or isinstance(tokens[0], list):
         tokens = [token for line in tokens for token in line]
     return collections.Counter(tokens)
+
+
+def _get_order_degree_list_node(graph, idx2node, node2idx, root, opt1_reduce_len=True, max_num_layers=None):
+    if max_num_layers is None:
+        max_num_layers = float('inf')
+    ordered_degree_sequence_dict = {}
+    visited = [False] * len(graph.nodes())
+    queue = deque()
+    level = 0
+    queue.append(root)
+    visited[root] = True
+    queue.append(root)
+    visited[root] = True
+
+    while len(queue) > 0 and level <= max_num_layers:
+        count = len(queue)
+        if opt1_reduce_len:
+            degree_list = {}
+        else:
+            degree_list = []
+        while count > 0:
+            top = queue.popleft()
+            node = idx2node[top]
+            degree = len(graph[node])
+            if opt1_reduce_len:
+                degree_list[degree] = degree_list.get(degree, 0) + 1
+            else:
+                degree_list.append(degree)
+            for nei in graph[node]:
+                nei_idx = node2idx[nei]
+                if not visited[nei_idx]:
+                    visited[nei_idx] = True
+                    queue.append(nei_idx)
+            count -= 1
+        if opt1_reduce_len:
+            ordered_degree_list = [(degree, freq) for degree, freq in degree_list.items()]
+            ordered_degree_list.sort(key=lambda x: x[0])
+        else:
+            ordered_degree_list = sorted(degree_list)
+        ordered_degree_sequence_dict[level] = ordered_degree_list
+        level += 1
+    return ordered_degree_sequence_dict

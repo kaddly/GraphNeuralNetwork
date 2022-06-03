@@ -8,7 +8,7 @@ import math
 
 
 def read_flight(data_dir):
-    return nx.read_edgelist(data_dir, create_using=nx.DiGraph(), nodetype=None, data=[('weight', int)])
+    return nx.read_edgelist(data_dir, create_using=nx.Graph(), nodetype=None, data=[('weight', int)])
 
 
 def subsample(sentences):
