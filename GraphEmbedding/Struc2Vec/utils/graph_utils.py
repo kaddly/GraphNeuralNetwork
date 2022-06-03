@@ -30,8 +30,6 @@ def _get_order_degree_list_node(graph, idx2node, node2idx, root, opt1_reduce_len
     level = 0
     queue.append(root)
     visited[root] = True
-    queue.append(root)
-    visited[root] = True
 
     while len(queue) > 0 and level <= max_num_layers:
         count = len(queue)
@@ -63,7 +61,7 @@ def _get_order_degree_list_node(graph, idx2node, node2idx, root, opt1_reduce_len
     return ordered_degree_sequence_dict
 
 
-def _compute_ordered_degreelist(graph, idx2node, node2idx, opt1_reduce_len=True, max_num_layers=None):
+def _compute_ordered_degree_list(graph, idx2node, node2idx, opt1_reduce_len=True, max_num_layers=None):
     degreeList = {}
     vertices = list(range(len(idx2node)))
     for v in vertices:
