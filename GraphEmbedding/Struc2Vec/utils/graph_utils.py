@@ -21,7 +21,7 @@ def count_corpus(tokens):
     return collections.Counter(tokens)
 
 
-def _get_order_degree_list_node(graph, idx2node, node2idx, root, opt1_reduce_len=True, max_num_layers=None):
+def _get_order_degree_list_node(graph, idx2node, node2idx, root, opt1_reduce_len, max_num_layers):
     if max_num_layers is None:
         max_num_layers = float('inf')
     ordered_degree_sequence_dict = {}
@@ -61,3 +61,11 @@ def _get_order_degree_list_node(graph, idx2node, node2idx, root, opt1_reduce_len
         ordered_degree_sequence_dict[level] = ordered_degree_list
         level += 1
     return ordered_degree_sequence_dict
+
+
+def _compute_ordered_degreelist(graph, idx2node, node2idx, opt1_reduce_len=True, max_num_layers=None):
+    degreeList = {}
+    vertices = list(range(len(idx2node)))
+    for v in vertices:
+        degreeList[v] = _get_order_degree_list_node(graph, idx2node, node2idx, v, opt1_reduce_len=opt1_reduce_len, max_num_layers=max_num_layers)
+    return degreeList
