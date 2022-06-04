@@ -83,6 +83,15 @@ def _get_order_degree_list_node(graph, idx2node, node2idx, root, opt1_reduce_len
 
 
 def _compute_ordered_degree_list(graph, idx2node, node2idx, opt1_reduce_len=True, max_num_layers=None):
+    """
+    得到每一个顶点的有序度列表
+    :param graph:
+    :param idx2node:
+    :param node2idx:
+    :param opt1_reduce_len:
+    :param max_num_layers:
+    :return:
+    """
     degreeList = {}
     vertices = list(range(len(idx2node)))
     for v in vertices:
@@ -92,6 +101,13 @@ def _compute_ordered_degree_list(graph, idx2node, node2idx, opt1_reduce_len=True
 
 
 def compute_dtw_dist(part_list, degreeList, dist_func):
+    """
+    计算顶点对的每一层距离
+    :param part_list:
+    :param degreeList:
+    :param dist_func:
+    :return:
+    """
     dtw_dist = {}
     for v1, nbs in part_list:
         lists_v1 = degreeList[v1]  # lists_v1 :orderd degree list of v1
@@ -108,6 +124,18 @@ def compute_dtw_dist(part_list, degreeList, dist_func):
 def _compute_structural_distance(graph, idx2node, node2idx, opt1_reduce_len=True, opt2_reduce_sim_calc=True,
                                  max_num_layers=None, workers=1,
                                  verbose=0):
+    """
+    计算每一层的结构距离
+    :param graph:
+    :param idx2node:
+    :param node2idx:
+    :param opt1_reduce_len:
+    :param opt2_reduce_sim_calc:
+    :param max_num_layers:
+    :param workers:
+    :param verbose:
+    :return:
+    """
     if opt1_reduce_len:
         dist_func = cost_max
     else:
@@ -162,6 +190,12 @@ def _create_vectors(G, idx2node):
 
 
 def _get_transition_probs(layers_adj, layers_distances):
+    """
+    得到每一层的游走概率
+    :param layers_adj:
+    :param layers_distances:
+    :return:
+    """
     layers_alias = {}
     layers_accept = {}
 
@@ -198,13 +232,19 @@ def _get_transition_probs(layers_adj, layers_distances):
     return layers_accept, layers_alias, norm_weights
 
 
-def prepare_biased_walk(norm_weights):
+def prepare_biased_walk(norm_weights, total_layer):
+    """
+
+    :param norm_weights:
+    :param total_layer:
+    :return:
+    """
     sum_weights = {}
     sum_edges = {}
     average_weight = {}
     gamma = {}
     layer = 0
-    while norm_weights:
+    while layer < total_layer:
         probs = norm_weights
         for v, list_weights in probs.items():
             sum_weights.setdefault(layer, 0)
@@ -359,6 +399,6 @@ def preprocess_struc2vec(graph, idx2node, node2idx, opt1_reduce_len=True, opt2_r
     layer_adj, layer_distances = _get_layer_rep(pair_distances)
     layers_accept, layers_alias, norm_weights = _get_transition_probs(layers_adj=layer_adj,
                                                                       layer_distances=layer_distances)
-    average_weight, gamma = prepare_biased_walk(norm_weights)
+    average_weight, gamma = prepare_biased_walk(norm_weights, len(layers_accept))
 
     return layers_accept, layers_alias, average_weight, gamma
