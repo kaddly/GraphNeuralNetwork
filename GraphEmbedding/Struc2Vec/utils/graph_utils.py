@@ -198,6 +198,7 @@ def _get_transition_probs(layers_adj, layers_distances):
     """
     layers_alias = {}
     layers_accept = {}
+    norm_weights = {}
 
     for layer in layers_adj:
 
@@ -205,7 +206,7 @@ def _get_transition_probs(layers_adj, layers_distances):
         layer_distances = layers_distances[layer]
         node_alias_dict = {}
         node_accept_dict = {}
-        norm_weights = {}
+        norm_weights_dict = {}
 
         for v, neighbors in neighbors.items():
             e_list = []
@@ -221,18 +222,19 @@ def _get_transition_probs(layers_adj, layers_distances):
                 sum_w += w
 
             e_list = [x / sum_w for x in e_list]
-            norm_weights[v] = e_list
+            norm_weights_dict[v] = e_list
             accept, alias = create_alias_table(e_list)
             node_alias_dict[v] = alias
             node_accept_dict[v] = accept
 
         layers_alias[layer] = node_alias_dict
         layers_accept[layer] = node_accept_dict
+        norm_weights[layer] = norm_weights_dict
 
     return layers_accept, layers_alias, norm_weights
 
 
-def prepare_biased_walk(norm_weights, total_layer):
+def prepare_biased_walk(norm_weights):
     """
 
     :param norm_weights:
@@ -244,8 +246,8 @@ def prepare_biased_walk(norm_weights, total_layer):
     average_weight = {}
     gamma = {}
     layer = 0
-    while layer < total_layer:
-        probs = norm_weights
+    while layer < len(norm_weights):
+        probs = norm_weights[layer]
         for v, list_weights in probs.items():
             sum_weights.setdefault(layer, 0)
             sum_edges.setdefault(layer, 0)
@@ -399,6 +401,6 @@ def preprocess_struct(graph, idx2node, node2idx, opt1_reduce_len=True, opt2_redu
     layer_adj, layer_distances = _get_layer_rep(pair_distances)
     layers_accept, layers_alias, norm_weights = _get_transition_probs(layers_adj=layer_adj,
                                                                       layer_distances=layer_distances)
-    average_weight, gamma = prepare_biased_walk(norm_weights, len(layers_accept))
+    average_weight, gamma = prepare_biased_walk(norm_weights)
 
     return layer_adj, layers_accept, layers_alias, gamma
