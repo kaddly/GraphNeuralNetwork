@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import networkx as nx
 import matplotlib.pyplot as plt
+from .graph_utils import preprocess_nxgraph, preprocess_struc2vec
 
 
 def read_flight(data_dir):

@@ -319,6 +319,26 @@ def get_vertices(v, degree_v, degrees, n_nodes):
         return list(vertices)
 
 
+def _get_layer_rep(pair_distances):
+    layer_distances = {}
+    layer_adj = {}
+    for v_pair, layer_dist in pair_distances.items():
+        for layer, distance in layer_dist.items():
+            vx = v_pair[0]
+            vy = v_pair[1]
+
+            layer_distances.setdefault(layer, {})
+            layer_distances[layer][vx, vy] = distance
+
+            layer_adj.setdefault(layer, {})
+            layer_adj[layer].setdefault(vx, [])
+            layer_adj[layer].setdefault(vy, [])
+            layer_adj[layer][vx].append(vy)
+            layer_adj[layer][vy].append(vx)
+
+    return layer_adj, layer_distances
+
+
 def verifyDegrees(degree_v_root, degree_a, degree_b):
     if degree_b == -1:
         degree_now = degree_a
@@ -330,3 +350,15 @@ def verifyDegrees(degree_v_root, degree_a, degree_b):
         degree_now = degree_a
 
     return degree_now
+
+
+def preprocess_struc2vec(graph, idx2node, node2idx, opt1_reduce_len=True, opt2_reduce_sim_calc=True,
+                         opt3_num_layers=None):
+    pair_distances = _compute_structural_distance(graph, idx2node, node2idx, opt1_reduce_len, opt2_reduce_sim_calc,
+                                                  opt3_num_layers)
+    layer_adj, layer_distances = _get_layer_rep(pair_distances)
+    layers_accept, layers_alias, norm_weights = _get_transition_probs(layers_adj=layer_adj,
+                                                                      layer_distances=layer_distances)
+    average_weight, gamma = prepare_biased_walk(norm_weights)
+
+    return layers_accept, layers_alias, average_weight, gamma
