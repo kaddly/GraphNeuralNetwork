@@ -94,6 +94,8 @@ def __reduce_by_half(x):
         if (i + 1) >= lens:
             half = x[i]
         else:
-            half = (x[i] + x[i + 1]) / 2
+            d_list = (x[i][0] + x[i + 1][0]) / 2
+            d_freq = (x[i][1] + x[i + 1][1]) / 2
+            half = (d_list, d_freq)
         x_reduce.append(half)
     return x_reduce

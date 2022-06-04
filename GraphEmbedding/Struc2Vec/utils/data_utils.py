@@ -116,6 +116,3 @@ def load_flight_data(data_dir, batch_size, num_walks, walk_length, workers, max_
     dataset = FlightDataset(all_centers, all_contexts, all_negatives)
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
     return data_iter, idx2node, node2idx, G
-
-
-load_flight_data('../../data/flight/brazil-airports.edgelist')

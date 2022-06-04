@@ -400,7 +400,7 @@ def preprocess_struct(graph, idx2node, node2idx, opt1_reduce_len=True, opt2_redu
                                                   opt3_num_layers)
     layer_adj, layer_distances = _get_layer_rep(pair_distances)
     layers_accept, layers_alias, norm_weights = _get_transition_probs(layers_adj=layer_adj,
-                                                                      layer_distances=layer_distances)
+                                                                      layers_distances=layer_distances)
     average_weight, gamma = prepare_biased_walk(norm_weights)
 
     return layer_adj, layers_accept, layers_alias, gamma
