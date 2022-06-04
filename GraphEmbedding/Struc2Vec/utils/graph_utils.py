@@ -392,8 +392,8 @@ def verifyDegrees(degree_v_root, degree_a, degree_b):
     return degree_now
 
 
-def preprocess_struc2vec(graph, idx2node, node2idx, opt1_reduce_len=True, opt2_reduce_sim_calc=True,
-                         opt3_num_layers=None):
+def preprocess_struct(graph, idx2node, node2idx, opt1_reduce_len=True, opt2_reduce_sim_calc=True,
+                      opt3_num_layers=None):
     pair_distances = _compute_structural_distance(graph, idx2node, node2idx, opt1_reduce_len, opt2_reduce_sim_calc,
                                                   opt3_num_layers)
     layer_adj, layer_distances = _get_layer_rep(pair_distances)
@@ -401,4 +401,4 @@ def preprocess_struc2vec(graph, idx2node, node2idx, opt1_reduce_len=True, opt2_r
                                                                       layer_distances=layer_distances)
     average_weight, gamma = prepare_biased_walk(norm_weights, len(layers_accept))
 
-    return layers_accept, layers_alias, average_weight, gamma
+    return layer_adj, layers_accept, layers_alias, gamma

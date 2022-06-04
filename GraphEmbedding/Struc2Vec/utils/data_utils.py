@@ -2,7 +2,8 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import networkx as nx
 import matplotlib.pyplot as plt
-from .graph_utils import preprocess_nxgraph, preprocess_struc2vec
+from .graph_utils import preprocess_nxgraph, preprocess_struct
+from .sample_utils import RandomWalker, RandomGenerator
 
 
 def read_flight(data_dir):
