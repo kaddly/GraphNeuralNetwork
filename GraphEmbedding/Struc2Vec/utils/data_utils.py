@@ -84,13 +84,13 @@ def batchify(data):
 
 def load_flight_data(data_dir, batch_size, num_walks, walk_length, workers, max_window_size, num_noise_words,
                      opt1_reduce_len=True, opt2_reduce_sim_calc=True,
-                     opt3_num_layers=None):
+                     opt3_num_layers=None, stay_prob=0.3):
     G = read_flight(data_dir)
     idx2node, node2idx = preprocess_nxgraph(G)
     layer_adj, layers_accept, layers_alias, gamma = preprocess_struct(G, idx2node, node2idx, opt1_reduce_len,
                                                                       opt2_reduce_sim_calc, opt3_num_layers)
     walker = RandomWalker(idx2node, layer_adj, layers_alias, layers_accept, gamma)
-    all_contexts = walker.simulate_walks(num_walks, walk_length, workers=workers)
+    all_contexts = walker.simulate_walks(num_walks, walk_length, stay_prob=stay_prob, workers=workers)
     print('load contexts:' + str(len(all_contexts)))
     subsampled, counter = subsample(all_contexts)
     print('load subsampled contexts:' + str(len(subsampled)))

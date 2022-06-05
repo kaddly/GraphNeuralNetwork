@@ -11,7 +11,7 @@ if __name__ == '__main__':
                                                         num_walks=80, walk_length=10, workers=4,
                                                         max_window_size=max_window_size,
                                                         num_noise_words=num_noise_words, opt1_reduce_len=True,
-                                                        opt2_reduce_sim_calc=True, opt3_num_layers=None)
+                                                        opt2_reduce_sim_calc=True, opt3_num_layers=None, stay_prob=0.3)
     vocab_size, embed_size = len(node2idx), 128
     model = Word2vec(vocab_size, embed_size)
     train(model, data_iter, lr, num_epochs, device)
