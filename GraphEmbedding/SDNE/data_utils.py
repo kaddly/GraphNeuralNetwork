@@ -33,6 +33,7 @@ def creat_A_L(graph, node2idx):
 
 def load_wiki(data_dir, batch_size):
     G = read_wiki(data_dir)
+    print(G)
     idx2node, node2idx = preprocess_nxgraph(G)
     A, L = creat_A_L(G, node2idx)
     A, L = torch.Tensor(A.todense()), torch.Tensor(L.todense())
