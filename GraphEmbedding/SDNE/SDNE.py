@@ -14,11 +14,11 @@ class SDNE_model(nn.Module):
                 self.encoders.add_module(f"relu{i}", nn.ReLU())
         self.decoders = nn.Sequential()
         for i in reversed(range(len(hidden_size))):
-            if i == len(hidden_size) - 1:
+            if i == 0:
                 self.decoders.add_module(f"decoder{i}", nn.Linear(hidden_size[i], node_size))
                 self.decoders.add_module(f"relu{i}", nn.ReLU())
             else:
-                self.decoders.add_module(f"decoder{i}", nn.Linear(hidden_size[i], hidden_size[i + 1]))
+                self.decoders.add_module(f"decoder{i}", nn.Linear(hidden_size[i], hidden_size[i - 1]))
                 self.decoders.add_module(f"relu{i}", nn.ReLU())
 
     def forward(self, X_input):
