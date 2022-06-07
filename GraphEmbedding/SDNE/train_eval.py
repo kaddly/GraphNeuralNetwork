@@ -3,6 +3,7 @@ from torch import nn
 import time
 import os
 from datetime import timedelta
+from data_utils import creat_A_L
 
 
 class loss_first(nn.Module):
@@ -21,7 +22,7 @@ class loss_second(nn.Module):
         self.beta = beta
 
     def forward(self, y_hat, y):
-        b_ = torch.ones(y.shape).cuda()
+        b_ = torch.ones(y.shape).to(y_hat.device)
         b_[y != 0] = self.beta
         l2_loss = torch.square((y_hat - y) * b_).sum(dim=-1)
         return l2_loss.mean()
@@ -83,11 +84,17 @@ def train(net, data_iter, lr, num_epochs, device, alpha, beta, wd):
             break
 
 
-def get_embedding(net, G, node2idx):
+def get_embedding(net, G, node2idx, idx2node):
     emb = {}
-    if not os.path.exists('../saved_dict/Struc2Vec/SDNE.ckpt'):
+    if not os.path.exists('../saved_dict/SDNE/SDNE.ckpt'):
         print('please train before!')
         return
-    net.load_state_dict(torch.load('../saved_dict/Struc2Vec/Struc2Vec.ckpt'), False)
+    net.load_state_dict(torch.load('../saved_dict/SDNE/SDNE.ckpt'), False)
+    net.cuda()
     net.eval()
-
+    A, _ = creat_A_L(G, node2idx)
+    A = torch.Tensor(A.toarray()).cuda()
+    _, embeddings = net(A)
+    for i, embedding in enumerate(embeddings):
+        emb[idx2node[i]] = embedding.cpu().tolist()
+    return emb
