@@ -1,21 +1,22 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
 import math
-from token_utils import Vocab, count_corpus
 from joblib import Parallel, delayed
 import itertools
 import random
 import matplotlib.pyplot as plt
 import networkx as nx
+from graph_utils import preprocess_nxgraph, count_corpus
 
 
-def plot_graph(data_dir):
-    G = nx.read_edgelist(data_dir, create_using=nx.DiGraph(), nodetype=None, data=[('weight', int)])
+def plot_graph(G):
     nx.draw(G, node_size=10, font_size=10, font_color="blue", font_weight="bold")
     plt.show()
 
 
-# plot_graph('../data/wiki/Wiki_edgelist.txt')
+def read_wiki(data_dir):
+    return nx.read_edgelist(data_dir, create_using=nx.DiGraph(), nodetype=None, data=[('weight', int)])
+
 
 def partition_num(num, workers):
     if num % workers == 0:
@@ -61,10 +62,10 @@ class RandomWalker:
         return walks
 
 
-def subsample(sentences, vocab):
+def subsample(sentences):
     """下采样高频词"""
     # 排除未知词元'<UNK>'
-    sentences = [[token for token in line if vocab[token] != vocab.unk] for line in sentences]
+    sentences = [[token for token in line] for line in sentences]
     counter = count_corpus(sentences)
     num_tokens = sum(counter.values())
 
@@ -98,7 +99,7 @@ class RandomGenerator:
 
     def __init__(self, sampling_weights):
         # Exclude
-        self.population = list(range(1, len(sampling_weights) + 1))
+        self.population = list(range(0, len(sampling_weights)))
         self.sampling_weights = sampling_weights
         self.candidates = []
         self.i = 0
@@ -112,13 +113,10 @@ class RandomGenerator:
         return self.candidates[self.i - 1]
 
 
-# generator = RandomGenerator([2, 3, 4])
-# print([generator.draw() for _ in range(10)])
-
-def get_negative(all_contexts, vocab, counter, K):
+def get_negative(all_contexts, idx2node, counter, K):
     """返回负采样中的噪声词"""
     # 索引为1、2、...（索引0是词表中排除的未知标记）
-    sampling_weights = [counter[vocab.to_tokens(i)] ** 0.75 for i in range(1, len(vocab))]
+    sampling_weights = [counter[idx2node[i]] ** 0.75 for i in range(0, len(idx2node))]
     all_negatives, generator = [], RandomGenerator(sampling_weights)
     for contexts in all_contexts:
         negatives = []
@@ -147,12 +145,19 @@ def batchify(data):
             , torch.tensor(labels))
 
 
-def load_data_wiki(sentences, batch_size, max_window_size, num_noise_words):
-    vocab = Vocab(sentences, min_freq=10)
-    subsampled, counter = subsample(sentences, vocab)
-    corpus = [vocab[line] for line in subsampled]
+def load_data_wiki(data_dir, batch_size, num_walks, walk_length, workers, max_window_size, num_noise_words):
+    G = read_wiki(data_dir)
+    idx2node, node2idx = preprocess_nxgraph(G)
+    walker = RandomWalker(G)
+    all_contexts = walker.simulate_walks(num_walks, walk_length, workers)
+    print('load contexts:'+str(len(all_contexts)))
+    subsampled, counter = subsample(all_contexts)
+    print('load subsampled contexts:' + str(len(subsampled)))
+    corpus = [[node2idx[token] for token in line] for line in subsampled]
     all_centers, all_contexts = get_centers_and_contexts(corpus, max_window_size)
-    all_negatives = get_negative(all_contexts, vocab, counter, num_noise_words)
+    print('load all_centers:'+str(len(all_centers)))
+    all_negatives = get_negative(all_contexts, idx2node, counter, num_noise_words)
+    print('load all_negatives:' + str(len(all_negatives)))
 
     class WikiDataset(Dataset):
         def __init__(self, centers, contexts, negatives):
@@ -169,4 +174,4 @@ def load_data_wiki(sentences, batch_size, max_window_size, num_noise_words):
 
     dataset = WikiDataset(all_centers, all_contexts, all_negatives)
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
-    return data_iter, vocab
+    return data_iter, idx2node, node2idx, G
