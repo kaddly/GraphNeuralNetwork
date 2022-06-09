@@ -42,7 +42,7 @@ LINE也是一种基于邻域相似假设的方法，只不过与DeepWalk使用DF
 
 不同的graph embedding方法的一个主要区别是对**图中顶点之间的相似度的定义**不同，所以先看一下LINE对于相似度的定义。
 
-![image-20220609084736300](.\img\LINE.jpg)
+![image-20220609084736300](./img/LINE.jpg)
 
 ### 一阶相似(first-order proximity)
 
