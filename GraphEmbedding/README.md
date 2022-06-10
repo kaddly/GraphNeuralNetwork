@@ -71,9 +71,9 @@ $\vec{u}_i$为顶点$v_i$的低维向量表示（可以看作一个内积模型�
 
 同时定义经验分布
 $$
-\overset{\land}{p_1}=\frac{w_{ij}}{W}\\W=\sum_{(i,j)\in E}{w_{ij}}
+\hat{p_1}=\frac{w_{ij}}{W}\\W=\sum_{(i,j)\in E}{w_{ij}}
 $$
-优化目标为最小化:$O_1=d(\overset{\land}{p_1}(.,.),p_1(.,.))$，$d(.,.)$是两个分布的距离，常用的衡量两个概率分布差异的指标为KL散度，使用KL散度并忽略常数项后有
+优化目标为最小化:$O_1=d(\hat{p_1}(.,.),p_1(.,.))$，$d(.,.)$是两个分布的距离，常用的衡量两个概率分布差异的指标为KL散度，使用KL散度并忽略常数项后有
 $$
 O_1=-\sum_{(i,j)\in E}w_{ij}\log p_1(v_i,v_j)
 $$
@@ -125,3 +125,84 @@ $$
 -\sum_{i\in N(i)}w_{ij}\log p_1(v_j,v_i)
 $$
 若不存在边相连，则需要利用一些side info，留到后续工作研究。
+
+## 2.3 Node2vec
+
+```
+node2vec是一种综合考虑DFS邻域和BFS邻域的graph embedding方法。
+简单来说，可以看作是deepwalk的一种扩展，可以看作是结合了DFS和BFS随机游走的deepwalk。
+```
+
+![image-20220610093327877](./img/node2vecbfsdfs.jpg)
+
+### 优化目标
+
+设f(u)是将顶点u映射为embedding向量的映射函数，对于图中每个顶点u，定义$N_s(u)$为通过采样策略S采样出的顶点u的近邻顶点集合。
+
+node2vec优化的目标是给定每个顶点条件下，令其近邻顶点出现的概率最大。
+$$
+\max_f \sum_{u\in V}\log P_r(N_s(U)|f(u))
+$$
+为了将上述最优化问题可解，文章提出两个假设：
+
+- 条件独立性假设
+  - 假设给定源顶点下，其近邻顶点出现的概率与近邻集合中其余顶点无关。
+  - $P_r(N_s(U)|f(u))=\prod_{n_i\in N_s(u)}P_r(n_i|f(u))$
+- 特征空间对称性假设
+  - 一个顶点作为源顶点和作为近邻顶点的时候**共享同一套embedding向量**。(对比LINE中的2阶相似度，一个顶点作为源点和近邻点的时候是拥有不同的embedding向量的)
+  - 在这个假设下，上诉的概率公式可表示为$P_r(n_i|f(u))=\frac{\exp{f(n_i)\cdot f(u)}}{\sum_{v\in V}\exp{f(v)\cdot f(v)}}$
+
+根据以上两个假设条件，最终的目标函数表示为
+$$
+\max_f{\sum_{u\in V}[-\log{Z_u}+\sum_{n_i\in N_s(u)}f(n_i)\cdot f(u)]}
+$$
+由于归一化因子$Z_u=\sum_{n_i\in N_s(u)}\exp{(f(n_i)\cdot f(u))}$的计算代价太高，所以采用负采样计算优化
+
+### 采用策略
+
+node2vec依然采用随机游走的方式获取顶点的近邻序列，不同的是node2vec采用的是一种有偏的随机游走。
+
+给定顶点v，访问下一个顶点x的概率为
+$$
+P(c_i=x|c_{i-1}=v)=\left\{ \begin{array}{l}
+	\frac{\pi_{vx}}{Z}\quad if(v,x)\in E\\
+	0\quad otherwise\\
+\end{array} \right.
+$$
+$\pi_{vx}$是顶点v和顶点x之间的未归一化转移概率，Z是归一化常数。
+
+node2vec引入两个超参数p和q来控制随机游走的策略，假设当前随机游走经过边(t,v)到达顶点v，设$\pi_{vx}=\alpha_{pq}(t,x)\cdot w_{vx}$，$w_{vx}$是顶点v和x之间的边权
+$$
+\alpha_{pq}(t,x)=\left\{ \begin{array}{l}
+	\frac{1}{p}\quad if\quad d_{tx}=0\\
+	\ 1\quad if\quad d_{tx}=1\\
+	\frac{1}{q}\quad if\quad d_{tx}=2\\
+\end{array} \right.
+$$
+$d_{tx}$为顶点t和顶点x之间的最短路径距离。
+
+下面讨论参数p和q对游走策略的影响
+
+- Return parameter,p
+  - 参数p控制重复访问刚刚访问过的顶点的概率。
+  - 注意到p仅作用于$d_{tx}=0$的情况，而$d_{tx}=0$表示顶点x就是访问当前顶点v之前访问过的顶点。
+  - 若p较高，则访问刚刚访问过的顶点的概率会变低，反之变高。
+- In-out papameter,q
+  - q控制着游走是向外还是向内
+  - 若q大于1，随机游走倾向于访问和t接近的顶点(偏向BFS)。
+  - 若q小于1，随机游走倾向于访问远离t t*t*的顶点(偏向DFS)。
+
+下面的图描述的是当从t访问到v时，决定下一个访问顶点时每个顶点对应的$\alpha$。
+
+![image-20220610093200692](./img/node2vecsample.jpg)
+
+### 学习算法
+
+采样完顶点序列后，剩下的步骤就和deepwalk一样了，用word2vec去学习顶点的embedding向量。
+值得注意的是node2vecWalk中不再是随机抽取邻接点，而是按概率抽取，node2vec采用了Alias算法进行顶点采样。
+
+Alias Method:时间复杂度O(1)的离散采样方法。
+
+![image-20220610093357506](./img/node2vec.jpg)
+
+## 
