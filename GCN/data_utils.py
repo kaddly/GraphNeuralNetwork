@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
 import scipy.sparse as sp
 
 
@@ -61,10 +60,29 @@ def normalize_adj(mx):
     return mx.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt)
 
 
+def sparse_mx_to_torch_sparse_tensor(sparse_mx):
+    """Convert a scipy sparse matrix to a torch sparse tensor."""
+    sparse_mx = sparse_mx.tocoo().astype(np.float32)
+    indices = torch.from_numpy(
+        np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
+    values = torch.from_numpy(sparse_mx.data)
+    shape = torch.Size(sparse_mx.shape)
+    return torch.sparse.FloatTensor(indices, values, shape)
+
+
 def load_cora(data_dir='./data/cora/', dataset="cora"):
     idx_features_labels, edges_unordered = read_cora(data_dir, dataset)
     idx2node, node2idx = preprocess_node_map(idx_features_labels)
     features, labels, adj = preprocess_data(idx_features_labels, edges_unordered, node2idx)
     features = normalize_features(features)  # 对特征做了归一化的操作
     adj = normalize_adj(adj + sp.eye(adj.shape[0]))  # 对A+I归一化
-
+    # 训练，验证，测试的样本
+    idx_train = range(140)
+    idx_val = range(200, 500)
+    idx_test = range(500, 1500)
+    features = torch.Tensor(features.toarray())
+    adj = sparse_mx_to_torch_sparse_tensor(adj)
+    idx_train = torch.LongTensor(idx_train)
+    idx_val = torch.LongTensor(idx_val)
+    idx_test = torch.LongTensor(idx_test)
+    return adj, features, labels, idx_train, idx_val, idx_test
