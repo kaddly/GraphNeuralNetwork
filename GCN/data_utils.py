@@ -15,7 +15,7 @@ def encode_onehot(labels):
 def read_cora(data_dir='./data/cora/', dataset="cora"):
     print('Loading {} dataset...'.format(dataset))
     idx_features_labels = np.genfromtxt("{}{}.content".format(data_dir, dataset), dtype=np.dtype(str))
-    edges_unordered = np.genfromtxt("{}{}.cites".format(data_dir, dataset), type=np.int32)
+    edges_unordered = np.genfromtxt("{}{}.cites".format(data_dir, dataset), dtype=np.int32)
     return idx_features_labels, edges_unordered
 
 
@@ -37,19 +37,34 @@ def preprocess_data(idx_features_labels, edges_unordered, node2idx):
     return features, labels, adj
 
 
-def normalize(mx):
-    """Row-normalize sparse matrix"""
-    row_sum = np.array(mx.sum(1))  # 矩阵行求和
-    r_inv = np.power(row_sum, -1).flatten()  # 求和的-1次方
-    r_inv[np.isinf(r_inv)] = 0.  # 如果是inf，转换成0
-    r_mat_inv = sp.diags(r_inv)  # 构造对角戏矩阵
-    mx = r_mat_inv.dot(mx)  # 构造D-1*A，非对称方式，简化方式
+def normalize_features(mx):
+    '''Row-normalize sparse matrix'''
+    # 矩阵行求和
+    rowsum = np.array(mx.sum(1))
+    # 求和的-1次方
+    r_inv = np.power(rowsum.astype(float), -1).flatten()
+    # 如果是inf，转换成0
+    r_inv[np.isinf(r_inv)] = 0
+    # 构建对角形矩阵
+    r_mat_inv = sp.diags(r_inv)
+    # 构造D-I*A, 非对称方式, 简化方式
+    mx = r_mat_inv.dot(mx)
     return mx
 
 
-def load_cora(data_dir, dataset):
+def normalize_adj(mx):
+    mx = sp.coo_matrix(mx)
+    rowsum = np.array(mx.sum(1))
+    d_inv_sqrt = np.power(rowsum, -0.5).flatten()
+    d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.
+    d_mat_inv_sqrt = sp.diags(d_inv_sqrt)
+    return mx.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt)
+
+
+def load_cora(data_dir='./data/cora/', dataset="cora"):
     idx_features_labels, edges_unordered = read_cora(data_dir, dataset)
     idx2node, node2idx = preprocess_node_map(idx_features_labels)
     features, labels, adj = preprocess_data(idx_features_labels, edges_unordered, node2idx)
-    features = normalize(features)   # 对特征做了归一化的操作
-    adj = normalize(adj + sp.eye(adj.shape[0]))   # 对A+I归一化
+    features = normalize_features(features)  # 对特征做了归一化的操作
+    adj = normalize_adj(adj + sp.eye(adj.shape[0]))  # 对A+I归一化
+
