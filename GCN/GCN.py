@@ -9,20 +9,25 @@ class GCN_Model(nn.Module):
         for i in range(num_layers):
             if i == 0:
                 self.gcn_blocks.add_module(f'gcn{i}', Graph_conv_layer(num_features, num_hidden))
+                self.gcn_blocks.add_module(f'relu{i}', nn.ReLU())
+                self.gcn_blocks.add_module(f'dropout{i}', nn.Dropout(dropout))
             elif i == num_layers - 1:
                 self.gcn_blocks.add_module(f'gcn{i}', Graph_conv_layer(num_hidden, num_classes))
             else:
                 self.gcn_blocks.add_module(f'gcn{i}', Graph_conv_layer(num_hidden, num_hidden))
-        self.dropout = nn.Dropout(dropout)
-        self.relu = nn.ReLU()
+                self.gcn_blocks.add_module(f'relu{i}', nn.ReLU())
+                self.gcn_blocks.add_module(f'dropout{i}', nn.Dropout(dropout))
 
     def forward(self, X, adj):
         for gcn_block in self.gcn_blocks:
-            pass
+            X = gcn_block(X, adj)
+        return X
 
 
 class Graph_conv_layer(nn.Module):
     def __init__(self, in_features, out_features, is_bias=True, **kwargs):
+        self.in_features = in_features
+        self.out_features = out_features
         super(Graph_conv_layer, self).__init__(**kwargs)
         self.dense = nn.Linear(in_features, out_features, bias=False)
         if is_bias:
@@ -42,3 +47,7 @@ class Graph_conv_layer(nn.Module):
         return self.__class__.__name__ + ' (' \
                + str(self.in_features) + ' -> ' \
                + str(self.out_features) + ')'
+
+
+net = GCN_Model(32, 128, 7, 2, 0.2)
+print(net)
