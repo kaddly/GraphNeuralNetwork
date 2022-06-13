@@ -47,7 +47,3 @@ class Graph_conv_layer(nn.Module):
         return self.__class__.__name__ + ' (' \
                + str(self.in_features) + ' -> ' \
                + str(self.out_features) + ')'
-
-
-net = GCN_Model(32, 128, 7, 2, 0.2)
-print(net)
