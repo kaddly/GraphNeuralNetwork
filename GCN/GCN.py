@@ -20,15 +20,18 @@ class GCN_Model(nn.Module):
 
     def forward(self, X, adj):
         for gcn_block in self.gcn_blocks:
-            X = gcn_block(X, adj)
+            if gcn_block._get_name() == 'Graph_conv_layer':
+                X = gcn_block(X, adj)
+            else:
+                X = gcn_block(X)
         return X
 
 
 class Graph_conv_layer(nn.Module):
     def __init__(self, in_features, out_features, is_bias=True, **kwargs):
+        super(Graph_conv_layer, self).__init__(**kwargs)
         self.in_features = in_features
         self.out_features = out_features
-        super(Graph_conv_layer, self).__init__(**kwargs)
         self.dense = nn.Linear(in_features, out_features, bias=False)
         if is_bias:
             self.bias = nn.Parameter(torch.FloatTensor(out_features))

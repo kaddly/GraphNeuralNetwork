@@ -81,6 +81,7 @@ def load_cora(data_dir='./data/cora/', dataset="cora"):
     idx_val = range(200, 500)
     idx_test = range(500, 1500)
     features = torch.Tensor(features.toarray())
+    labels = torch.LongTensor(np.where(labels)[1])
     adj = sparse_mx_to_torch_sparse_tensor(adj)
     idx_train = torch.LongTensor(idx_train)
     idx_val = torch.LongTensor(idx_val)
