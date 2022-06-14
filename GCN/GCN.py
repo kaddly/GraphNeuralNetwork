@@ -34,7 +34,7 @@ class Graph_conv_layer(nn.Module):
         self.out_features = out_features
         self.dense = nn.Linear(in_features, out_features, bias=False)
         if is_bias:
-            self.bias = nn.Parameter(torch.FloatTensor(out_features))
+            self.bias = nn.Parameter(torch.zeros(out_features))
         else:
             self.register_parameter('bias', None)
 
