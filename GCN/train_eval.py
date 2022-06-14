@@ -59,20 +59,25 @@ def train(model, data_iter, lr, num_epochs, device):
                 improve = ''
             time_dif = timedelta(seconds=int(round(time.time() - start_time)))
             msg = 'Epoch [{0}/{1}]:  total_loss: {2:>5.3f},  total_acc: {3:>5.3f}, val_loss: {4:>5.3f}, val_acc: {5:>5.3f}, Time: {6} {7}'
-            print(msg.format(epoch + 1, num_epochs, train_loss.item() / len(idx_train), train_acc,
-                             val_loss.item() / len(idx_val), accuracy(output[idx_val], labels[idx_val]), time_dif,
+            print(msg.format(epoch + 1, num_epochs, train_loss.item(), train_acc, val_loss.item(),
+                             accuracy(output[idx_val], labels[idx_val]), time_dif,
                              improve))
-        if epoch - last_improve > 500:
+        if epoch - last_improve > 1000:
             print("No optimization for a long time, auto-stopping...")
             break
 
 
 def test(model, data_iter, device):
     adj, features, labels, idx_train, idx_val, idx_test = [data.to(device) for data in data_iter]
+    if not os.path.exists('./saved_dict/GCN/GCN.ckpt'):
+        print('please train before!')
+        return
+    model.load_state_dict(torch.load('./saved_dict/GCN/GCN.ckpt'), False)
+    model.to(device)
     model.eval()
     output = model(features, adj)
     loss_test = F.cross_entropy(output[idx_test], labels[idx_test])
     acc_test = accuracy(output[idx_test], labels[idx_test])
     print("Test set results:",
-          "loss= {:.4f}".format(loss_test.item() / len(idx_test)),
-          "accuracy= {:.4f}".format(acc_test.item()))
+          "loss= {:.4f}".format(loss_test.item()),
+          "accuracy= {:.4f}".format(acc_test))
