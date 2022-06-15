@@ -1,13 +1,12 @@
 import os
-import numpy as np
 from collections import defaultdict
 import torch
 from torch.utils.data import Dataset, DataLoader
 
 
 def read_data(data_dir):
-    pubmed_cite_file = os.path.join(data_dir, 'Pubmed-Diabetes.DIRECTED.cites')
-    pubmed_content_file = os.path.join(data_dir, 'Pubmed-Diabetes.NODE.paper')
+    pubmed_cite_file = os.path.join(data_dir, 'Pubmed-Diabetes.DIRECTED.cites.tab')
+    pubmed_content_file = os.path.join(data_dir, 'Pubmed-Diabetes.NODE.paper.tab')
 
     feat_data = []
     labels = []  # label sequence of node
@@ -20,14 +19,11 @@ def read_data(data_dir):
             info = line.split("\t")
             node_map[info[0]] = i
             labels.append(int(info[1].split("=")[1]) - 1)
-            tmp_list = np.zeros(len(feat_map) - 2)
+            tmp_list = [0]*(len(feat_map) - 2)
             for word_info in info[2:-1]:
                 word_info = word_info.split("=")
                 tmp_list[feat_map[word_info[0]]] = float(word_info[1])
             feat_data.append(tmp_list)
-
-    feat_data = np.asarray(feat_data)
-    labels = np.asarray(labels, dtype=np.int64)
 
     adj_lists = defaultdict(set)
     with open(pubmed_cite_file) as fp:
