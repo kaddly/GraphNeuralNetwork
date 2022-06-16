@@ -38,15 +38,10 @@ class SageLayer(nn.Module):
         return combined
 
 
-def UnsupervisedLoss():
-    pass
-
-
 class GraphSage(nn.Module):
     """docstring for GraphSage"""
 
-    def __init__(self, num_layers, input_size, out_size, aggregator, gcn=False, Unsupervised=True, label_nums=None,
-                 **kwargs):
+    def __init__(self, num_layers, input_size, out_size, aggregator, gcn=False, Unsupervised=True, **kwargs):
         super(GraphSage, self).__init__(**kwargs)
 
         self.input_size = input_size
@@ -61,12 +56,8 @@ class GraphSage(nn.Module):
             layer_size = out_size if index != 0 else input_size
             self.blocks.add_module(f'sage{index}', SageLayer(layer_size, out_size, gcn=self.gcn))
 
-        self.Unsupervised = Unsupervised
-
         if not Unsupervised:
             self.dense = nn.Linear(out_size, layer_size)
-        else:
-            self.UnsupervisedLoss = UnsupervisedLoss
 
     def forward(self, nodes, feat_data, neighbors):
         neigh_feat = self.aggregator(feat_data, nodes, neighbors)
@@ -74,6 +65,6 @@ class GraphSage(nn.Module):
             feat_data = block(feat_data, neigh_feat)
             neigh_feat = self.aggregator(feat_data, nodes, neighbors)
         if self.Unsupervised:
-            return feat_data, self.UnsupervisedLoss(feat_data, nodes, neighbors)
+            return feat_data
         else:
             return feat_data, self.dense(feat_data)
