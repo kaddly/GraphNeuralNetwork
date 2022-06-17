@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from graph_utils import Aggregator
 
 
 class SageLayer(nn.Module):
@@ -41,15 +42,17 @@ class SageLayer(nn.Module):
 class GraphSage(nn.Module):
     """docstring for GraphSage"""
 
-    def __init__(self, num_layers, input_size, out_size, aggregator, gcn=False, Unsupervised=True, class_nums=None, **kwargs):
+    def __init__(self, num_layers, input_size, out_size, agg_func='MEAN', gcn=False, Unsupervised=True, class_nums=None,
+                 **kwargs):
         super(GraphSage, self).__init__(**kwargs)
 
         self.input_size = input_size
         self.out_size = out_size
         self.num_layers = num_layers
         self.gcn = gcn
+        self.agg_func = agg_func
 
-        self.aggregator = aggregator
+        self.aggregator = Aggregator
 
         self.blocks = nn.Sequential()
         for index in range(num_layers):
@@ -60,10 +63,10 @@ class GraphSage(nn.Module):
             self.dense = nn.Linear(out_size, class_nums)
 
     def forward(self, feat_data, neigh_feat):
-        aggregate_feats = self.aggregator(feat_data, neigh_feat)
+        aggregate_feats = self.aggregator(feat_data, neigh_feat, agg_func=self.agg_func, gcn=self.gcn)
         for block in self.blocks:
             feat_data = block(feat_data, aggregate_feats)
-            aggregate_feats = self.aggregator(feat_data, aggregate_feats)
+            aggregate_feats = self.aggregator(feat_data, aggregate_feats, agg_func=self.agg_func, gcn=self.gcn)
         if self.Unsupervised:
             return feat_data
         else:
