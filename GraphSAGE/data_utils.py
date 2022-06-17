@@ -56,12 +56,14 @@ def train_test_split(node_nums, test_split=0.3, val_split=0.6):
 
 
 class pubmed_dataset(Dataset):
-    def __init__(self, feat_data, labels, adj_lists):
-        self.feat_data = torch.Tensor(feat_data)
+    def __init__(self, nodes, samp_neighs, labels):
+        assert len(nodes) == len(samp_neighs) == len(labels)
+        self.nodes = torch.Tensor(nodes)
+        self.samp_neighs = torch.Tensor(samp_neighs)
         self.labels = torch.Tensor(labels)
 
     def __getitem__(self, item):
-        pass
+        return self.nodes[item], self.samp_neighs[item], self.labels[item]
 
     def __len__(self):
         return len(self.labels)
