@@ -42,6 +42,7 @@ def read_data(data_dir):
 
 def train_test_split(node_nums, test_split=0.3, val_split=0.6):
     rand_indices = list(range(node_nums))
+    random.shuffle(rand_indices)
 
     test_size = int(node_nums * test_split)
     val_size = int(node_nums * val_split)
