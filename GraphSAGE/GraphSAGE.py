@@ -42,7 +42,8 @@ class SageLayer(nn.Module):
 class GraphSage(nn.Module):
     """docstring for GraphSage"""
 
-    def __init__(self, num_layers, input_size, out_size, agg_func='MEAN', gcn=False, Unsupervised=True, class_nums=None,
+    def __init__(self, num_layers, input_size, out_size, feats_data, agg_func='MEAN', gcn=False, Unsupervised=True,
+                 class_nums=None,
                  **kwargs):
         super(GraphSage, self).__init__(**kwargs)
 
@@ -51,6 +52,7 @@ class GraphSage(nn.Module):
         self.num_layers = num_layers
         self.gcn = gcn
         self.agg_func = agg_func
+        self.feats_data = feats_data
 
         self.aggregator = Aggregator
 
@@ -62,11 +64,14 @@ class GraphSage(nn.Module):
         if not Unsupervised:
             self.dense = nn.Linear(out_size, class_nums)
 
-    def forward(self, feat_data, neigh_feat):
-        aggregate_feats = self.aggregator(feat_data, neigh_feat, agg_func=self.agg_func, gcn=self.gcn)
+    def forward(self, nodes, samp_neighs):
+        aggregate_feats = self.aggregator(self.feats_data[nodes], self.feats_data[samp_neighs], agg_func=self.agg_func,
+                                          gcn=self.gcn)
         for block in self.blocks:
-            feat_data = block(feat_data, aggregate_feats)
-            aggregate_feats = self.aggregator(feat_data, aggregate_feats, agg_func=self.agg_func, gcn=self.gcn)
+            feat_data = block(self.feats_data[nodes], aggregate_feats)
+            self.feats_data[nodes] = feat_data
+            aggregate_feats = self.aggregator(feat_data, self.feats_data[samp_neighs], agg_func=self.agg_func,
+                                              gcn=self.gcn)
         if self.Unsupervised:
             return feat_data
         else:
