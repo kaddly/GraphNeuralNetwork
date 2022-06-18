@@ -67,11 +67,11 @@ class pubmed_dataset(Dataset):
         assert len(nodes) == len(samp_neighs) == len(labels)
         self.nodes = torch.tensor(nodes)
         self.samp_neighs = torch.tensor(samp_neighs)
-        self.labels = torch.tensor(labels)
         self.val_lens = torch.tensor(val_lens)
+        self.labels = torch.tensor(labels)
 
     def __getitem__(self, item):
-        return self.nodes[item], self.samp_neighs[item], self.labels[item], self.val_lens[item]
+        return self.nodes[item], self.samp_neighs[item], self.val_lens[item], self.labels[item]
 
     def __len__(self):
         return len(self.labels)
