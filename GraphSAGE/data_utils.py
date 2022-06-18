@@ -41,34 +41,66 @@ def read_data(data_dir):
 
 
 def train_test_split(node_nums, test_split=0.3, val_split=0.6):
-    rand_indices = list(range(node_nums))
-    random.shuffle(rand_indices)
-
     test_size = int(node_nums * test_split)
     val_size = int(node_nums * val_split)
     train_size = node_nums - (test_size + val_size)
+    return train_size, val_size, test_size
 
-    test_indexs = rand_indices[:test_size]
-    val_indexs = rand_indices[test_size:(test_size + val_size)]
-    train_indexs = rand_indices[(test_size + val_size):]
 
-    return train_indexs, val_indexs, test_indexs
+def sample_neigh(adj_lists, sample_neigh_num=10):
+    nodes, sample_nodes, val_lens = [], [], []
+    for node, neigh_nodes in adj_lists.items():
+        nodes.append(node)
+        val_len = len(neigh_nodes)
+        if sample_neigh_num < val_len:
+            val_len = sample_neigh_num
+            neigh_nodes = random.sample(neigh_nodes, sample_neigh_num)
+        else:
+            neigh_nodes = list(neigh_nodes) + [0] * (sample_neigh_num - val_len)
+        val_lens.append(val_len)
+        sample_nodes.append(neigh_nodes)
+    return nodes, sample_nodes, val_lens
 
 
 class pubmed_dataset(Dataset):
-    def __init__(self, nodes, samp_neighs, labels):
+    def __init__(self, nodes, samp_neighs, labels, val_lens):
         assert len(nodes) == len(samp_neighs) == len(labels)
-        self.nodes = torch.Tensor(nodes)
-        self.samp_neighs = torch.Tensor(samp_neighs)
-        self.labels = torch.Tensor(labels)
+        self.nodes = torch.tensor(nodes)
+        self.samp_neighs = torch.tensor(samp_neighs)
+        self.labels = torch.tensor(labels)
+        self.val_lens = torch.tensor(val_lens)
 
     def __getitem__(self, item):
-        return self.nodes[item], self.samp_neighs[item], self.labels[item]
+        return self.nodes[item], self.samp_neighs[item], self.labels[item], self.val_lens[item]
 
     def __len__(self):
         return len(self.labels)
 
 
-def load_pubmed_data(data_dir, batch_size):
+def load_pubmed_data(data_dir, batch_size, sample_neigh_num, Unsupervised=True):
     feat_data, labels, adj_lists = read_data(data_dir)
-    print()
+    train_size, val_size, test_size = train_test_split(len(adj_lists))
+    nodes, sample_nodes, val_lens = sample_neigh(adj_lists, sample_neigh_num)
+    if Unsupervised:
+        pass
+    else:
+        train_dataset = pubmed_dataset(nodes[:train_size], sample_nodes[:train_size], labels[:train_size],
+                                       val_lens[:train_size])
+        val_dataset = pubmed_dataset(nodes[train_size:train_size + val_size],
+                                     sample_nodes[train_size:train_size + val_size],
+                                     labels[train_size:train_size + val_size],
+                                     val_lens[train_size:train_size + val_size])
+        test_dataset = pubmed_dataset(nodes[-test_size:], sample_nodes[-test_size:], labels[-test_size:],
+                                      val_lens[-test_size:])
+
+        train_iter = DataLoader(train_dataset, batch_size)
+        val_iter = DataLoader(val_dataset, batch_size)
+        test_iter = DataLoader(test_dataset, batch_size)
+    return train_iter, val_iter, test_iter, torch.Tensor(feat_data)
+
+
+feats_data = torch.arange(40).reshape(10, 4)
+index = torch.tensor([[0, 2, 3], [1, 2, 9]])
+pad = torch.tensor([1, 2]).reshape(-1, 1)
+print(pad+1)
+print(torch.embedding(feats_data, index).shape)
