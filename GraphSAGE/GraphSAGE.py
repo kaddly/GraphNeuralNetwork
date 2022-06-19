@@ -57,6 +57,8 @@ class GraphSage(nn.Module):
         self.aggregator = Aggregator
 
         self.blocks = nn.Sequential()
+
+        self.Unsupervised = Unsupervised
         for index in range(num_layers):
             layer_size = out_size if index != 0 else input_size
             self.blocks.add_module(f'sage{index}', SageLayer(layer_size, out_size, gcn=self.gcn))
@@ -70,7 +72,7 @@ class GraphSage(nn.Module):
                                           agg_func=self.agg_func, gcn=self.gcn)
         for block in self.blocks:
             feat_data = block(torch.embedding(self.feats_data, nodes), aggregate_feats)
-            self.feats_data[nodes.flatten()] = feat_data
+            # self.feats_data[nodes.flatten()] = feat_data
             aggregate_feats = self.aggregator(feat_data, torch.embedding(self.feats_data, samp_neighs), val_lens,
                                               agg_func=self.agg_func, gcn=self.gcn)
         if self.Unsupervised:

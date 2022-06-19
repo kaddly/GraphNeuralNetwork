@@ -16,7 +16,7 @@ def Aggregator(feat_data, neigh_feat, val_lens, agg_func='MEAN', gcn=False):
         if gcn:
             neigh_feat = torch.cat([feat_data.unsqueeze(1), neigh_feat], dim=1)
             val_lens = val_lens+1
-        return torch.sum(neigh_feat, dim=1) / val_lens.repeat(1, neigh_feat.shape[3])
+        return torch.sum(neigh_feat, dim=1) / val_lens.reshape(-1, 1).repeat(1, neigh_feat.shape[2])
 
     elif agg_func == 'MAX':
         neigh_feat = sequence_mask(neigh_feat, val_lens, value=-1e6)

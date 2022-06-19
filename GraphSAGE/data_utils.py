@@ -65,6 +65,7 @@ def sample_neigh(adj_lists, sample_neigh_num=10):
 class pubmed_dataset(Dataset):
     def __init__(self, nodes, samp_neighs, labels, val_lens):
         assert len(nodes) == len(samp_neighs) == len(labels)
+        print('load data:'+str(len(nodes)))
         self.nodes = torch.tensor(nodes)
         self.samp_neighs = torch.tensor(samp_neighs)
         self.val_lens = torch.tensor(val_lens)
@@ -79,7 +80,7 @@ class pubmed_dataset(Dataset):
 
 def load_pubmed_data(data_dir, batch_size, sample_neigh_num, Unsupervised=True):
     feat_data, labels, adj_lists = read_data(data_dir)
-    train_size, val_size, test_size = train_test_split(len(adj_lists))
+    train_size, val_size, test_size = train_test_split(len(adj_lists),0.2,0.2)
     nodes, sample_nodes, val_lens = sample_neigh(adj_lists, sample_neigh_num)
     if Unsupervised:
         pass
@@ -97,10 +98,3 @@ def load_pubmed_data(data_dir, batch_size, sample_neigh_num, Unsupervised=True):
         val_iter = DataLoader(val_dataset, batch_size)
         test_iter = DataLoader(test_dataset, batch_size)
     return train_iter, val_iter, test_iter, torch.Tensor(feat_data)
-
-
-feats_data = torch.arange(40).reshape(10, 4)
-index = torch.tensor([[0, 2, 3], [1, 2, 9]])
-pad = torch.tensor([1, 2]).reshape(-1, 1)
-print(pad+1)
-print(torch.embedding(feats_data, index).shape)

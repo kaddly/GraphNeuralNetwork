@@ -36,7 +36,7 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
             else:
                 X = X.to(device)
             y = y.to(device)
-            y_hat = net(X)
+            _, y_hat = net(*X)
             acc.append(accuracy(y_hat, y))
             loss.append(F.cross_entropy(y_hat, y))
     return sum(acc) / len(acc), sum(loss) / len(loss)
@@ -44,6 +44,7 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
 
 def train(net, train_iter, val_iter, lr, num_epochs, device, Unsupervised=True):
     net = net.to(device)
+    net.feats_data = net.feats_data.to(device)
     optimizer = torch.optim.Adam(params=net.parameters(), lr=lr)
     loss = nn.CrossEntropyLoss()
     start_time = time.time()
@@ -65,7 +66,7 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, Unsupervised=True):
         if Unsupervised:
             pass
         else:
-            for i, X, labels in enumerate(train_iter):
+            for i, (X, labels) in enumerate(train_iter):
                 optimizer.zero_grad()
                 if isinstance(X, list):
                     # Required for BERT fine-tuning (to be covered later)
@@ -73,7 +74,7 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, Unsupervised=True):
                 else:
                     X = X.to(device)
                 labels = labels.to(device)
-                emb, pre_labels = net(X)
+                emb, pre_labels = net(*X)
                 l = loss(pre_labels, labels)
                 l.backward()
                 optimizer.step()
