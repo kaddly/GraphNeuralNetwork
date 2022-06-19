@@ -71,7 +71,7 @@ class pubmed_dataset(Dataset):
         self.labels = torch.tensor(labels)
 
     def __getitem__(self, item):
-        return self.nodes[item], self.samp_neighs[item], self.val_lens[item], self.labels[item]
+        return (self.nodes[item], self.samp_neighs[item], self.val_lens[item]), self.labels[item]
 
     def __len__(self):
         return len(self.labels)

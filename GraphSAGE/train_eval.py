@@ -65,10 +65,15 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, Unsupervised=True):
         if Unsupervised:
             pass
         else:
-            for i, batch in enumerate(train_iter):
+            for i, X, labels in enumerate(train_iter):
                 optimizer.zero_grad()
-                nodes, samp_neighs, val_lens, labels = [data.to(device) for data in batch]
-                emb, pre_labels = net(nodes, samp_neighs, val_lens)
+                if isinstance(X, list):
+                    # Required for BERT fine-tuning (to be covered later)
+                    X = [x.to(device) for x in X]
+                else:
+                    X = X.to(device)
+                labels = labels.to(device)
+                emb, pre_labels = net(X)
                 l = loss(pre_labels, labels)
                 l.backward()
                 optimizer.step()
@@ -82,3 +87,16 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, Unsupervised=True):
                         last_improve = total_batch
                     else:
                         improve = ''
+                    time_dif = timedelta(seconds=int(round(time.time() - start_time)))
+                    msg = 'Iter: {0:>6},  Train Loss: {1:>5.2},  Train Acc: {2:>6.2%},  Val Loss: {3:>5.2},  Val Acc: {4:>6.2%},  Time: {5} {6}'
+                    print(msg.format(total_batch, l.item(), train_acc, dev_loss, dev_acc, time_dif, improve))
+
+                    net.train()
+                total_batch += 1
+                if total_batch - last_improve > 2000:
+                    # 验证集loss超过1000batch没下降，结束训练
+                    print("No optimization for a long time, auto-stopping...")
+                    flag = True
+                    break
+            if flag:
+                break
