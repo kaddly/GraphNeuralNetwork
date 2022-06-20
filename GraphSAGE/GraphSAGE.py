@@ -66,14 +66,14 @@ class GraphSage(nn.Module):
         if not Unsupervised:
             self.dense = nn.Linear(out_size, class_nums)
 
-    def forward(self, nodes, samp_neighs, val_lens):
+    def forward(self, nodes, samp_neighs):
         aggregate_feats = self.aggregator(torch.embedding(self.feats_data, nodes),
-                                          torch.embedding(self.feats_data, samp_neighs), val_lens,
+                                          torch.embedding(self.feats_data, samp_neighs),
                                           agg_func=self.agg_func, gcn=self.gcn)
         for block in self.blocks:
             feat_data = block(torch.embedding(self.feats_data, nodes), aggregate_feats)
-            # self.feats_data[nodes.flatten()] = feat_data
-            aggregate_feats = self.aggregator(feat_data, torch.embedding(self.feats_data, samp_neighs), val_lens,
+            self.feats_data[nodes.flatten()] = feat_data
+            aggregate_feats = self.aggregator(feat_data, torch.embedding(self.feats_data, samp_neighs),
                                               agg_func=self.agg_func, gcn=self.gcn)
         if self.Unsupervised:
             return feat_data

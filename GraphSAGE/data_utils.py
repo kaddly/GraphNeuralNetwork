@@ -48,31 +48,29 @@ def train_test_split(node_nums, test_split=0.3, val_split=0.6):
 
 
 def sample_neigh(adj_lists, sample_neigh_num=10):
-    nodes, sample_nodes, val_lens = [], [], []
+    nodes, sample_nodes = [], []
     for node, neigh_nodes in adj_lists.items():
         nodes.append(node)
-        val_len = len(neigh_nodes)
-        if sample_neigh_num < val_len:
-            val_len = sample_neigh_num
+        if sample_neigh_num < len(neigh_nodes):
+            # 有无放回抽样
             neigh_nodes = random.sample(neigh_nodes, sample_neigh_num)
         else:
-            neigh_nodes = list(neigh_nodes) + [0] * (sample_neigh_num - val_len)
-        val_lens.append(val_len)
+            # 有放回抽样
+            neigh_nodes = random.choices(neigh_nodes, sample_neigh_num)
         sample_nodes.append(neigh_nodes)
-    return nodes, sample_nodes, val_lens
+    return nodes, sample_nodes
 
 
 class pubmed_dataset(Dataset):
-    def __init__(self, nodes, samp_neighs, labels, val_lens):
+    def __init__(self, nodes, samp_neighs, labels):
         assert len(nodes) == len(samp_neighs) == len(labels)
         print('load data:'+str(len(nodes)))
         self.nodes = torch.tensor(nodes)
         self.samp_neighs = torch.tensor(samp_neighs)
-        self.val_lens = torch.tensor(val_lens)
         self.labels = torch.tensor(labels)
 
     def __getitem__(self, item):
-        return (self.nodes[item], self.samp_neighs[item], self.val_lens[item]), self.labels[item]
+        return (self.nodes[item], self.samp_neighs[item]), self.labels[item]
 
     def __len__(self):
         return len(self.labels)
@@ -80,19 +78,16 @@ class pubmed_dataset(Dataset):
 
 def load_pubmed_data(data_dir, batch_size, sample_neigh_num, Unsupervised=True):
     feat_data, labels, adj_lists = read_data(data_dir)
-    train_size, val_size, test_size = train_test_split(len(adj_lists),0.2,0.2)
-    nodes, sample_nodes, val_lens = sample_neigh(adj_lists, sample_neigh_num)
+    train_size, val_size, test_size = train_test_split(len(adj_lists))
+    nodes, sample_nodes = sample_neigh(adj_lists, sample_neigh_num)
     if Unsupervised:
         pass
     else:
-        train_dataset = pubmed_dataset(nodes[:train_size], sample_nodes[:train_size], labels[:train_size],
-                                       val_lens[:train_size])
+        train_dataset = pubmed_dataset(nodes[:train_size], sample_nodes[:train_size], labels[:train_size])
         val_dataset = pubmed_dataset(nodes[train_size:train_size + val_size],
                                      sample_nodes[train_size:train_size + val_size],
-                                     labels[train_size:train_size + val_size],
-                                     val_lens[train_size:train_size + val_size])
-        test_dataset = pubmed_dataset(nodes[-test_size:], sample_nodes[-test_size:], labels[-test_size:],
-                                      val_lens[-test_size:])
+                                     labels[train_size:train_size + val_size])
+        test_dataset = pubmed_dataset(nodes[-test_size:], sample_nodes[-test_size:], labels[-test_size:])
 
         train_iter = DataLoader(train_dataset, batch_size)
         val_iter = DataLoader(val_dataset, batch_size)
