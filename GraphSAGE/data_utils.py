@@ -1,7 +1,6 @@
 import os
 from collections import defaultdict
 import random
-import torch
 from torch.utils.data import Dataset, DataLoader
 
 
@@ -44,52 +43,93 @@ def train_test_split(node_nums, test_split=0.3, val_split=0.6):
     test_size = int(node_nums * test_split)
     val_size = int(node_nums * val_split)
     train_size = node_nums - (test_size + val_size)
-    return train_size, val_size, test_size
+    nodes = list(range(node_nums))
+    random.shuffle(nodes)
+    return nodes[:train_size], nodes[train_size:train_size + val_size], nodes[-test_size:]
 
 
-def sample_neigh(adj_lists, sample_neigh_num=10):
-    nodes, sample_nodes = [], []
-    for node, neigh_nodes in adj_lists.items():
-        nodes.append(node)
-        if sample_neigh_num < len(neigh_nodes):
-            # 有无放回抽样
-            neigh_nodes = random.sample(neigh_nodes, sample_neigh_num)
+def get_context(nodes, adj_lists, max_window_size):
+    all_contexts = []
+    for node in nodes:
+        contexts = list(adj_lists[node])
+        window_size = random.randint(1, max_window_size)
+        if len(contexts) > window_size:
+            all_contexts.append(contexts[:window_size])
         else:
-            # 有放回抽样
-            neigh_nodes = random.choices(neigh_nodes, sample_neigh_num)
-        sample_nodes.append(neigh_nodes)
-    return nodes, sample_nodes
+            all_contexts.append(contexts)
+    return all_contexts
 
 
-class pubmed_dataset(Dataset):
-    def __init__(self, nodes, samp_neighs, labels):
-        assert len(nodes) == len(samp_neighs) == len(labels)
-        print('load data:'+str(len(nodes)))
-        self.nodes = torch.tensor(nodes)
-        self.samp_neighs = torch.tensor(samp_neighs)
-        self.labels = torch.tensor(labels)
-
-    def __getitem__(self, item):
-        return (self.nodes[item], self.samp_neighs[item]), self.labels[item]
-
-    def __len__(self):
-        return len(self.labels)
+def get_negative(all_contexts, node_nums, K):
+    all_nodes = list(range(node_nums))
+    all_negatives = []
+    for contexts in all_contexts:
+        negatives = []
+        while len(negatives) < len(contexts) * K:
+            neg = random.choice(all_nodes)
+            if neg not in contexts and neg not in negatives:
+                negatives.append(neg)
+        all_negatives.append(negatives)
+    return all_negatives
 
 
-def load_pubmed_data(data_dir, batch_size, sample_neigh_num, Unsupervised=True):
+def batchify(data):
+    """返回带有负采样的跳元模型的⼩批量样本"""
+    max_len = max(len(c) + len(n) for _, c, n in data)
+    centers, contexts_negatives, masks, labels = [], [], [], []
+    for center, context, negative in data:
+        cur_len = len(context) + len(negative)
+        centers += [center]
+        contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
+        masks += [[1] * len(context)+[len(negative)]*len(negative) + [0] * (max_len - cur_len)]
+        labels += [[1] * len(context) + [0] * (max_len - len(context))]
+    return (centers, contexts_negatives, masks, labels)
+
+
+def load_pubmed_data(data_dir, batch_size, Unsupervised=True, max_window_size=5, num_noise_words=5):
     feat_data, labels, adj_lists = read_data(data_dir)
-    train_size, val_size, test_size = train_test_split(len(adj_lists))
-    nodes, sample_nodes = sample_neigh(adj_lists, sample_neigh_num)
+    train_nodes, val_nodes, test_nodes = train_test_split(len(adj_lists))
     if Unsupervised:
-        pass
-    else:
-        train_dataset = pubmed_dataset(nodes[:train_size], sample_nodes[:train_size], labels[:train_size])
-        val_dataset = pubmed_dataset(nodes[train_size:train_size + val_size],
-                                     sample_nodes[train_size:train_size + val_size],
-                                     labels[train_size:train_size + val_size])
-        test_dataset = pubmed_dataset(nodes[-test_size:], sample_nodes[-test_size:], labels[-test_size:])
+        train_contexts, val_contexts, test_contexts = [get_context(nodes, adj_lists, max_window_size) for nodes in
+                                                       [train_nodes, val_nodes, test_nodes]]
+        train_negatives, val_negatives, test_negatives = [get_negative(nodes, len(adj_lists), num_noise_words) for nodes
+                                                          in [train_contexts, val_contexts, test_contexts]]
 
-        train_iter = DataLoader(train_dataset, batch_size)
-        val_iter = DataLoader(val_dataset, batch_size)
-        test_iter = DataLoader(test_dataset, batch_size)
-    return train_iter, val_iter, test_iter, torch.Tensor(feat_data)
+        class PubmedDataset(Dataset):
+            def __init__(self, centers, contexts, negatives):
+                assert len(centers) == len(contexts) == len(negatives)
+                self.centers = centers
+                self.contexts = contexts
+                self.negatives = negatives
+
+            def __getitem__(self, item):
+                return (self.centers[item], self.negatives[item], self.contexts[item])
+
+            def __len__(self):
+                return len(self.centers)
+
+        train_dataset = PubmedDataset(train_nodes, train_contexts, train_negatives)
+        val_dataset = PubmedDataset(val_nodes, val_contexts, val_negatives)
+        test_dataset = PubmedDataset(test_nodes, test_contexts, test_negatives)
+        train_iter = DataLoader(train_dataset, batch_size, shuffle=True, collate_fn=batchify)
+        val_iter = DataLoader(val_dataset, batch_size, shuffle=True, collate_fn=batchify)
+        test_iter = DataLoader(test_dataset, batch_size, shuffle=True, collate_fn=batchify)
+    else:
+        class PubmedDataset(Dataset):
+            def __init__(self, nodes):
+                self.nodes = nodes
+
+            def __getitem__(self, item):
+                return self.nodes[item]
+
+            def __len__(self):
+                return len(self.nodes)
+
+        train_dataset = PubmedDataset(train_nodes)
+        val_dataset = PubmedDataset(val_nodes)
+        test_dataset = PubmedDataset(test_nodes)
+        train_iter = DataLoader(train_dataset, batch_size, shuffle=True)
+        val_iter = DataLoader(val_dataset, batch_size, shuffle=True)
+        test_iter = DataLoader(test_dataset, batch_size, shuffle=True)
+
+    return train_iter, val_iter, test_iter, feat_data, labels, adj_lists

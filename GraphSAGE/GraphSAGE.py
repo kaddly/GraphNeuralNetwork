@@ -59,7 +59,7 @@ class GraphSage(nn.Module):
     """docstring for GraphSage"""
 
     def __init__(self, num_layers, input_size, out_size, raw_features, adj_lists, device, gcn=False, agg_func='MEAN',
-                 class_size=None):
+                 Unsupervised=True, class_size=None):
         super(GraphSage, self).__init__()
 
         self.input_size = input_size
@@ -77,7 +77,8 @@ class GraphSage(nn.Module):
         for index in range(1, num_layers + 1):
             layer_size = out_size if index != 1 else input_size
             self.sage_blocks.add_module('sage_layer' + str(index), SageLayer(layer_size, out_size, gcn=self.gcn))
-        if class_size is not None:
+        self.Unsupervised = Unsupervised
+        if not Unsupervised:
             self.dense = nn.Linear(out_size, class_size)
 
     def forward(self, nodes_batch, context_nodes):
@@ -112,11 +113,15 @@ class GraphSage(nn.Module):
                                              aggregate_feats=aggregate_feats)  # 进入SageLayer。weight*concat(node,neighbors)
                 pre_hidden_embs = cur_hidden_embs
 
-            return pre_hidden_embs
+            classes = None
+            if not self.Unsupervised:
+                classes = self.dense(pre_hidden_embs)
+
+            return pre_hidden_embs, classes
         else:
-            nodes_embedding = self.forward(nodes_batch)
+            nodes_embedding, _ = self.forward(nodes_batch)
             context_len = len(context_nodes[0])
-            context_nodes_embedding = self.forward(
+            context_nodes_embedding, _ = self.forward(
                 [context_node for con_nodes in context_nodes for context_node in con_nodes]).reshape(len(nodes_batch),
                                                                                                      context_len, -1)
             return torch.bmm(nodes_embedding, context_nodes_embedding.permute(0, 2, 1))
