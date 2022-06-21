@@ -58,7 +58,8 @@ class SageLayer(nn.Module):
 class GraphSage(nn.Module):
     """docstring for GraphSage"""
 
-    def __init__(self, num_layers, input_size, out_size, raw_features, adj_lists, device, gcn=False, agg_func='MEAN'):
+    def __init__(self, num_layers, input_size, out_size, raw_features, adj_lists, device, gcn=False, agg_func='MEAN',
+                 class_size=None):
         super(GraphSage, self).__init__()
 
         self.input_size = input_size
@@ -68,7 +69,7 @@ class GraphSage(nn.Module):
         self.device = device
         self.agg_func = agg_func
 
-        self.raw_features = raw_features  # 点的特征
+        self.raw_features = raw_features.to(device)  # 点的特征
         self.adj_lists = adj_lists  # 边的连接
 
         self.sage_blocks = nn.Sequential()
@@ -76,39 +77,49 @@ class GraphSage(nn.Module):
         for index in range(1, num_layers + 1):
             layer_size = out_size if index != 1 else input_size
             self.sage_blocks.add_module('sage_layer' + str(index), SageLayer(layer_size, out_size, gcn=self.gcn))
+        if class_size is not None:
+            self.dense = nn.Linear(out_size, class_size)
 
-    def forward(self, nodes_batch):
+    def forward(self, nodes_batch, context_nodes):
         """
         Generates embeddings for a batch of nodes.
         nodes_batch	-- batch of nodes to learn the embeddings.    《minbatch 过程，涉及到的所有节点》
         """
-        lower_layer_nodes = list(nodes_batch)
-        nodes_batch_layers = [(lower_layer_nodes,)]  # 第一次放入的节点，batch节点
-        # self.dc.logger.info('get_unique_neighs.')
-        for i in range(self.num_layers):  # 每层的Sage
-            lower_samp_neighs, lower_layer_nodes_dict, lower_layer_nodes = self._get_unique_neighs_list(
-                lower_layer_nodes)  # 获得neighbors。 聚合自己和邻居节点，点的dict，涉及到的所有节点
-            nodes_batch_layers.insert(0, (
-                lower_layer_nodes, lower_samp_neighs, lower_layer_nodes_dict))  # 聚合自己和邻居节点，点的dict，涉及到的所有节点
-        # insert,0 从最外层开始聚合
-        assert len(nodes_batch_layers) == self.num_layers + 1
+        if context_nodes is None:
+            lower_layer_nodes = list(nodes_batch)
+            nodes_batch_layers = [(lower_layer_nodes,)]  # 第一次放入的节点，batch节点
+            # self.dc.logger.info('get_unique_neighs.')
+            for i in range(self.num_layers):  # 每层的Sage
+                lower_samp_neighs, lower_layer_nodes_dict, lower_layer_nodes = self._get_unique_neighs_list(
+                    lower_layer_nodes)  # 获得neighbors。 聚合自己和邻居节点，点的dict，涉及到的所有节点
+                nodes_batch_layers.insert(0, (
+                    lower_layer_nodes, lower_samp_neighs, lower_layer_nodes_dict))  # 聚合自己和邻居节点，点的dict，涉及到的所有节点
+            # insert,0 从最外层开始聚合
+            assert len(nodes_batch_layers) == self.num_layers + 1
 
-        pre_hidden_embs = self.raw_features
-        for index in range(1, self.num_layers + 1):
-            nb = nodes_batch_layers[index][0]  # 聚合自己和周围的节点
-            pre_neighs = nodes_batch_layers[index - 1]  # 这层节点的上层邻居的所有信息。聚合自己和邻居节点，点的dict，涉及到的所有节点
-            # self.dc.logger.info('aggregate_feats.') aggrefate_feats=>输出GraphSAGE聚合后的信息
-            # 聚合函数。nb-这一层的节点， pre_hidden_embs-feature，pre_neighs-上一层节点
-            aggregate_feats = self.aggregate(nb, pre_hidden_embs, pre_neighs)
-            sage_layer = self.sage_blocks[index - 1]
-            if index > 1:
-                nb = self._nodes_map(nb, pre_neighs)  # 第一层的batch节点，没有进行转换
-            # self.dc.logger.info('sage_layer.')
-            cur_hidden_embs = sage_layer(self_feats=pre_hidden_embs[nb],
-                                         aggregate_feats=aggregate_feats)  # 进入SageLayer。weight*concat(node,neighbors)
-            pre_hidden_embs = cur_hidden_embs
+            pre_hidden_embs = self.raw_features
+            for index in range(1, self.num_layers + 1):
+                nb = nodes_batch_layers[index][0]  # 聚合自己和周围的节点
+                pre_neighs = nodes_batch_layers[index - 1]  # 这层节点的上层邻居的所有信息。聚合自己和邻居节点，点的dict，涉及到的所有节点
+                # self.dc.logger.info('aggregate_feats.') aggrefate_feats=>输出GraphSAGE聚合后的信息
+                # 聚合函数。nb-这一层的节点， pre_hidden_embs-feature，pre_neighs-上一层节点
+                aggregate_feats = self.aggregate(nb, pre_hidden_embs, pre_neighs)
+                sage_layer = self.sage_blocks[index - 1]
+                if index > 1:
+                    nb = self._nodes_map(nb, pre_neighs)  # 第一层的batch节点，没有进行转换
+                # self.dc.logger.info('sage_layer.')
+                cur_hidden_embs = sage_layer(self_feats=pre_hidden_embs[nb],
+                                             aggregate_feats=aggregate_feats)  # 进入SageLayer。weight*concat(node,neighbors)
+                pre_hidden_embs = cur_hidden_embs
 
-        return pre_hidden_embs
+            return pre_hidden_embs
+        else:
+            nodes_embedding = self.forward(nodes_batch)
+            context_len = len(context_nodes[0])
+            context_nodes_embedding = self.forward(
+                [context_node for con_nodes in context_nodes for context_node in con_nodes]).reshape(len(nodes_batch),
+                                                                                                     context_len, -1)
+            return torch.bmm(nodes_embedding, context_nodes_embedding.permute(0, 2, 1))
 
     def _nodes_map(self, nodes, neighs):
         layer_nodes, samp_neighs, layer_nodes_dict = neighs
@@ -122,10 +133,10 @@ class GraphSage(nn.Module):
             samp_neighs = []
             for to_neigh in to_neighs:
                 if len(to_neigh) >= num_sample:
-                    sample_neigh = random.sample(to_neigh, num_sample)
+                    sample_neigh = random.sample(to_neigh, k=num_sample)
                 else:
-                    sample_neigh = random.choices(to_neigh, num_sample)
-            samp_neighs.append(set(sample_neigh))
+                    sample_neigh = random.choices(to_neigh, k=num_sample)
+                samp_neighs.append(set(sample_neigh))
         else:
             samp_neighs = to_neighs
         samp_neighs = [samp_neigh | set([nodes[i]]) for i, samp_neigh in enumerate(samp_neighs)]  # 聚合本身节点和邻居节点
