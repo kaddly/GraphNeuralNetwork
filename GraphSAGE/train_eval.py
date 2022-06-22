@@ -44,7 +44,6 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
 
 def train(net, train_iter, val_iter, lr, num_epochs, device, Unsupervised=True):
     net = net.to(device)
-    net.feats_data = net.feats_data.to(device)
     optimizer = torch.optim.Adam(params=net.parameters(), lr=lr)
     loss = nn.CrossEntropyLoss()
     start_time = time.time()

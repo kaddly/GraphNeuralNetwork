@@ -81,7 +81,7 @@ def batchify(data):
         cur_len = len(context) + len(negative)
         centers += [center]
         contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
-        masks += [[1] * len(context)+[len(negative)]*len(negative) + [0] * (max_len - cur_len)]
+        masks += [[1] * cur_len + [0] * (max_len - cur_len)]
         labels += [[1] * len(context) + [0] * (max_len - len(context))]
     return (centers, contexts_negatives, masks, labels)
 
