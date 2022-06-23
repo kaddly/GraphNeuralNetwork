@@ -47,6 +47,29 @@ def train_test_split(node_nums, test_split=0.3, val_split=0.6):
     return train_size, val_size, test_size
 
 
+def get_context_nodes(nodes, adj_lists, window_size):
+    all_contexts = []
+    for node in nodes:
+        contexts = list(adj_lists[node])
+        if len(contexts) > window_size:
+            all_contexts.append(contexts[:window_size])
+        else:
+            all_contexts.append(random.choices(contexts, k=window_size))
+    return all_contexts
+
+
+def get_negative_nodes(all_contexts, all_nodes, K):
+    all_negatives = []
+    for contexts in all_contexts:
+        negatives = []
+        while len(negatives) < len(contexts) * K:
+            neg = random.choice(all_nodes)
+            if neg not in contexts and neg not in negatives:
+                negatives.append(neg)
+        all_negatives.append(negatives)
+    return all_negatives
+
+
 def adj_nodes_pad(X, pad_len, value=0):
     """将层邻居矩阵pad到同一维度"""
     neighs_len = len(X[0])
@@ -99,17 +122,17 @@ class collate_fn:
             center_nodes, contexts_negatives, batch_labels = [], [], []
             for node, contexts, negatives in data:
                 center_nodes.append(node)
-                contexts_negatives.extend(contexts_negatives + negatives)
+                contexts_negatives.extend(contexts + negatives)
                 batch_labels.append([1] * len(contexts) + [0] * len(negatives))
-                center_neigh_nodes = torch.tensor(
-                    get_layer_adj_nodes(center_nodes, self.adj_lists, self.num_layers, self.num_neighs))
-                contexts_negatives_neigh_nodes = torch.tensor(
-                    get_layer_adj_nodes(contexts_negatives, self.adj_lists, self.num_layers, self.num_neighs))
-                center_feats_data = torch.embedding(self.feat_data, center_neigh_nodes[0])
-                contexts_negatives_feats_data = torch.embedding(self.feat_data, contexts_negatives_neigh_nodes[0])
-                return center_feats_data, center_neigh_nodes[
+            center_neigh_nodes = torch.tensor(
+                get_layer_adj_nodes(center_nodes, self.adj_lists, self.num_layers, self.num_neighs))
+            contexts_negatives_neigh_nodes = torch.tensor(
+                get_layer_adj_nodes(contexts_negatives, self.adj_lists, self.num_layers, self.num_neighs))
+            center_feats_data = torch.embedding(self.feat_data, center_neigh_nodes[0])
+            contexts_negatives_feats_data = torch.embedding(self.feat_data, contexts_negatives_neigh_nodes[0])
+            return center_feats_data, center_neigh_nodes[
                                           1:], contexts_negatives_feats_data, contexts_negatives_neigh_nodes[
-                                                                              1:], batch_labels
+                                                                              1:], torch.tensor(batch_labels)
 
         else:
             data = list(map(list, zip(*data)))
@@ -119,13 +142,21 @@ class collate_fn:
             return feats_data, neigh_nodes[1:], batch_labels
 
 
-def load_pubmed_data(data_dir, batch_size, num_layers, num_neighs, is_unsupervised=True):
+def load_pubmed_data(data_dir, batch_size, num_layers, num_neighs, window_size=5, num_noise_words=5, is_unsupervised=True):
     feat_data, labels, adj_lists = read_pubmed_data(data_dir)
     nodes = list(range(len(adj_lists)))
     random.shuffle(nodes)
     train_size, val_size, test_size = train_test_split(len(adj_lists))
     batchify = collate_fn(adj_lists, feat_data, num_layers, num_neighs, is_unsupervised)
     if is_unsupervised:
+        train_contexts = get_context_nodes(nodes[:train_size], adj_lists, window_size)
+        val_contexts = get_context_nodes(nodes[train_size:train_size + val_size], adj_lists, window_size)
+        test_contexts = get_context_nodes(nodes[-test_size:], adj_lists, window_size)
+
+        train_negatives = get_negative_nodes(train_contexts, nodes, num_noise_words)
+        val_negatives = get_negative_nodes(val_contexts, nodes, num_noise_words)
+        test_negatives = get_negative_nodes(test_contexts, nodes, num_noise_words)
+
         class pubmed_dataset(Dataset):
             def __init__(self, nodes, contexts, negatives):
                 assert len(nodes) == len(contexts) == len(negatives)
@@ -134,10 +165,18 @@ def load_pubmed_data(data_dir, batch_size, num_layers, num_neighs, is_unsupervis
                 self.negatives = negatives
 
             def __getitem__(self, item):
-                return self.ndoe[item], self.contexts[item], self.negatives[item]
+                return self.nodes[item], self.contexts[item], self.negatives[item]
 
             def __len__(self):
                 return len(self.nodes)
+
+        train_dataset = pubmed_dataset(nodes[:train_size], train_contexts, train_negatives)
+        val_dataset = pubmed_dataset(nodes[train_size:train_size + val_size], val_contexts, val_negatives)
+        test_dataset = pubmed_dataset(nodes[-test_size:], test_contexts, test_negatives)
+
+        train_iter = DataLoader(train_dataset, batch_size, collate_fn=batchify)
+        val_iter = DataLoader(val_dataset, batch_size, collate_fn=batchify)
+        test_iter = DataLoader(test_dataset, batch_size, collate_fn=batchify)
 
     else:
         class pubmed_dataset(Dataset):
@@ -147,7 +186,7 @@ def load_pubmed_data(data_dir, batch_size, num_layers, num_neighs, is_unsupervis
                 self.nodes = nodes
 
             def __getitem__(self, item):
-                return self.ndoe[item], self.labels[item]
+                return self.nodes[item], self.labels[item]
 
             def __len__(self):
                 return len(self.nodes)
@@ -156,7 +195,7 @@ def load_pubmed_data(data_dir, batch_size, num_layers, num_neighs, is_unsupervis
         val_dataset = pubmed_dataset(nodes[train_size:train_size + val_size], labels[train_size:train_size + val_size])
         test_dataset = pubmed_dataset(nodes[-test_size:], labels[-test_size:])
 
-
-feat_data, labels, adj_lists = read_pubmed_data('../GraphSAGE/data/pubmed-data')
-nodes = list(range(8))
-get_layer_adj_nodes(nodes, adj_lists, 3, 5)
+        train_iter = DataLoader(train_dataset, batch_size, collate_fn=batchify)
+        val_iter = DataLoader(val_dataset, batch_size, collate_fn=batchify)
+        test_iter = DataLoader(test_dataset, batch_size, collate_fn=batchify)
+    return train_iter, val_iter, test_iter
