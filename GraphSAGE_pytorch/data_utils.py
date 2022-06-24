@@ -96,17 +96,17 @@ def get_layer_adj_nodes(nodes, adj_lists, num_layers, num_neighs):
                 layer_neigh_nodes[i].append(random.choices(list(neighs), k=num_neighs))
         nodes = layer_nodes
         layer_nodes = set()
-    neigh_nodes = []
+    neigh_nodes_map = []
     for i in reversed(range(num_layers)):
         if i == num_layers - 1:
-            neigh_nodes.append(layer_neigh_nodes[i])
+            neigh_nodes_map.append(layer_neigh_nodes[i])
             pad_len = len(layer_neigh_nodes[i])
         else:
             nodes_map = layer_nodes_map[i + 1]
             sample_neigh_nodes = layer_neigh_nodes[i]
             sample_neigh_nodes = list(map(lambda x: list(map(lambda i: nodes_map[i], x)), sample_neigh_nodes))
-            neigh_nodes.append(adj_nodes_pad(sample_neigh_nodes, pad_len, -1))
-    return neigh_nodes
+            neigh_nodes_map.append(adj_nodes_pad(sample_neigh_nodes, pad_len, -1))
+    return neigh_nodes_map, list(nodes)
 
 
 class collate_fn:
@@ -124,25 +124,38 @@ class collate_fn:
                 center_nodes.append(node)
                 contexts_negatives.extend(contexts + negatives)
                 batch_labels.append([1] * len(contexts) + [0] * len(negatives))
-            center_neigh_nodes = torch.tensor(
-                get_layer_adj_nodes(center_nodes, self.adj_lists, self.num_layers, self.num_neighs))
-            contexts_negatives_neigh_nodes = torch.tensor(
-                get_layer_adj_nodes(contexts_negatives, self.adj_lists, self.num_layers, self.num_neighs))
-            center_feats_data = torch.embedding(self.feat_data, center_neigh_nodes[0])
-            contexts_negatives_feats_data = torch.embedding(self.feat_data, contexts_negatives_neigh_nodes[0])
-            return center_feats_data, center_neigh_nodes[
-                                          1:], contexts_negatives_feats_data, contexts_negatives_neigh_nodes[
-                                                                              1:], torch.tensor(batch_labels)
+            center_neigh_nodes_map, center_nodes = get_layer_adj_nodes(center_nodes, self.adj_lists,
+                                                                       self.num_layers, self.num_neighs)
+            center_neigh_nodes_map = torch.tensor(center_neigh_nodes_map)
+            center_nodes = torch.tensor(center_nodes)
+
+            contexts_negatives_neigh_nodes_map, contexts_negatives_nodes = get_layer_adj_nodes(
+                contexts_negatives, self.adj_lists, self.num_layers, self.num_neighs)
+            contexts_negatives_neigh_nodes_map = torch.tensor(contexts_negatives_neigh_nodes_map)
+            contexts_negatives_nodes = torch.tensor(contexts_negatives_nodes)
+
+            return torch.embedding(self.feat_data, center_nodes), torch.embedding(self.feat_data,
+                                                                                  center_neigh_nodes_map), center_neigh_nodes_map[
+                                                                                                           1:], torch.embedding(
+                self.feat_data, contexts_negatives_nodes), torch.embedding(self.feat_data,
+                                                                           contexts_negatives_neigh_nodes_map[
+                                                                               0]), contexts_negatives_neigh_nodes_map[
+                                                                                    1:], torch.tensor(batch_labels)
 
         else:
             data = list(map(list, zip(*data)))
             batch_labels = torch.tensor(data[1])
-            neigh_nodes = torch.tensor(get_layer_adj_nodes(data[0], self.adj_lists, self.num_layers, self.num_neighs))
-            feats_data = torch.embedding(self.feat_data, neigh_nodes[0])
-            return feats_data, neigh_nodes[1:], batch_labels
+            neigh_nodes_map, nodes = get_layer_adj_nodes(data[0], self.adj_lists, self.num_layers,
+                                                         self.num_neighs)
+            neigh_nodes_map = torch.tensor(neigh_nodes_map)
+            nodes = torch.tensor(nodes)
+            return torch.embedding(self.feat_data, nodes), torch.embedding(self.feat_data,
+                                                                           neigh_nodes_map[0]), neigh_nodes_map[
+                                                                                                1:], batch_labels
 
 
-def load_pubmed_data(data_dir, batch_size, num_layers, num_neighs, window_size=5, num_noise_words=5, is_unsupervised=True):
+def load_pubmed_data(data_dir, batch_size, num_layers, num_neighs, window_size=5, num_noise_words=5,
+                     is_unsupervised=True):
     feat_data, labels, adj_lists = read_pubmed_data(data_dir)
     nodes = list(range(len(adj_lists)))
     random.shuffle(nodes)
