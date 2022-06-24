@@ -31,18 +31,29 @@ class GraphSAGE(nn.Module):
         for index in range(0, num_layers):
             layer_size = out_size if index != 0 else input_size
             self.sage_blocks.add_module('sage_layer' + str(index), SageLayer(layer_size, out_size, gcn=self.gcn))
+        self.Unsupervised = Unsupervised
         if not Unsupervised:
             self.dense = nn.Linear(out_size, class_size)
 
     def forward(self, center_feats_data, center_nodes_map, center_neigh_feats_data, center_neigh_nodes_map,
-                contexts_negatives_feats_data, contexts_negatives_nodes_map, contexts_negatives_neigh_feats_data, contexts_negatives_neigh_nodes_map):
+                contexts_negatives_feats_data, contexts_negatives_nodes_map, contexts_negatives_neigh_feats_data,
+                contexts_negatives_neigh_nodes_map, contexts_negatives_shape):
         # 监督学习
         if contexts_negatives_feats_data is None:
             for i, block in enumerate(self.sage_blocks):
                 aggregator_feats_data = Aggregator(center_feats_data, center_neigh_feats_data, self.agg_func, self.gcn)
                 feats_data = block(center_feats_data, aggregator_feats_data)
-                center_feats_data = torch.embedding(feats_data, center_nodes_map[i])
-                center_neigh_feats_data = torch.embedding(feats_data, center_neigh_nodes_map[i])
-
+                center_feats_data = torch.embedding(feats_data, center_nodes_map[i][center_nodes_map[i][:, 0] != -1, :])
+                center_neigh_feats_data = torch.embedding(feats_data, center_neigh_nodes_map[i][
+                                                                      center_neigh_nodes_map[i][:, 0] != -1, :])
+            if not self.Unsupervised:
+                classes = self.dense(center_feats_data)
+            return center_feats_data, classes
         else:
-            pass
+            center_feats_data, _ = self(center_feats_data, center_nodes_map, center_neigh_feats_data,
+                                        center_neigh_nodes_map, None, None, None, None, None)
+            contexts_negatives_feats_data = self(contexts_negatives_feats_data, contexts_negatives_nodes_map,
+                                                 contexts_negatives_neigh_feats_data,
+                                                 contexts_negatives_neigh_nodes_map, None, None, None, None, None)
+            contexts_negatives_feats_data = contexts_negatives_feats_data.reshape(contexts_negatives_shape[0], contexts_negatives_shape[1], -1)
+            return center_feats_data, torch.bmm(center_feats_data, contexts_negatives_feats_data.permute(0, 2, 1))

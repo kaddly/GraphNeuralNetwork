@@ -132,8 +132,6 @@ class collate_fn:
                 center_nodes.append(node)
                 contexts_negatives.extend(contexts + negatives)
                 batch_labels.append([1] * len(contexts) + [0] * len(negatives))
-            if self.is_gcn:
-                contexts_negatives.extend(center_nodes)
             center_neigh_nodes_map, center_nodes_map = get_layer_adj_nodes(center_nodes, self.adj_lists,
                                                                            self.num_layers, self.num_neighs,
                                                                            self.is_gcn)
