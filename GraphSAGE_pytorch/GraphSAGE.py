@@ -34,14 +34,15 @@ class GraphSAGE(nn.Module):
         if not Unsupervised:
             self.dense = nn.Linear(out_size, class_size)
 
-    def forward(self, center_feats_data, center_neigh_feats_data, center_neigh_nodes_map, contexts_negatives_feats_data,
-                contexts_negatives_neigh_feats_data, contexts_negatives_neigh_nodes_map):
+    def forward(self, center_feats_data, center_nodes_map, center_neigh_feats_data, center_neigh_nodes_map,
+                contexts_negatives_feats_data, contexts_negatives_nodes_map, contexts_negatives_neigh_feats_data, contexts_negatives_neigh_nodes_map):
         # 监督学习
         if contexts_negatives_feats_data is None:
             for i, block in enumerate(self.sage_blocks):
                 aggregator_feats_data = Aggregator(center_feats_data, center_neigh_feats_data, self.agg_func, self.gcn)
-                center_feats_data = block(center_feats_data, aggregator_feats_data)
-                center_neigh_feats_data = torch.embedding(center_feats_data, center_neigh_nodes_map[i])
+                feats_data = block(center_feats_data, aggregator_feats_data)
+                center_feats_data = torch.embedding(feats_data, center_nodes_map[i])
+                center_neigh_feats_data = torch.embedding(feats_data, center_neigh_nodes_map[i])
 
         else:
             pass

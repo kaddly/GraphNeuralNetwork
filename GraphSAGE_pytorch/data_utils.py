@@ -132,8 +132,11 @@ class collate_fn:
                 center_nodes.append(node)
                 contexts_negatives.extend(contexts + negatives)
                 batch_labels.append([1] * len(contexts) + [0] * len(negatives))
+            if self.is_gcn:
+                contexts_negatives.extend(center_nodes)
             center_neigh_nodes_map, center_nodes_map = get_layer_adj_nodes(center_nodes, self.adj_lists,
-                                                                       self.num_layers, self.num_neighs, self.is_gcn)
+                                                                           self.num_layers, self.num_neighs,
+                                                                           self.is_gcn)
             center_neigh_nodes_map = torch.tensor(center_neigh_nodes_map)
             center_nodes_map = torch.tensor(center_nodes_map)
 
@@ -144,8 +147,9 @@ class collate_fn:
 
             return torch.embedding(self.feat_data, center_nodes_map[0]), center_nodes_map[1:], \
                    torch.embedding(self.feat_data, center_neigh_nodes_map[0]), center_neigh_nodes_map[1:], \
-                   torch.embedding(self.feat_data, contexts_negatives_nodes_map[0]), contexts_negatives_nodes_map[1:],\
-                   torch.embedding(self.feat_data, contexts_negatives_neigh_nodes_map[0]), contexts_negatives_neigh_nodes_map[1:], \
+                   torch.embedding(self.feat_data, contexts_negatives_nodes_map[0]), contexts_negatives_nodes_map[1:], \
+                   torch.embedding(self.feat_data,
+                                   contexts_negatives_neigh_nodes_map[0]), contexts_negatives_neigh_nodes_map[1:], \
                    torch.tensor(batch_labels)
 
         else:
