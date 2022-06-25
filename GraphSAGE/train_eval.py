@@ -37,11 +37,13 @@ def evaluate_accuracy_gpu(net, data_iter, is_unsupervised, device=None):
                 X = X.to(device)
             y = y.to(device)
             if is_unsupervised:
-                _, y_hat = net(*X)
+                _, y_hat = net(*X, y.shape)
+                acc.append(accuracy(y_hat, y))
+                loss.append(F.binary_cross_entropy_with_logits(y_hat.reshape(y.shape).float(), y.float()))
             else:
                 _, y_hat = net(*X, None, None, None, None, None)
-            acc.append(accuracy(y_hat, y))
-            loss.append(F.cross_entropy(y_hat, y))
+                acc.append(accuracy(y_hat, y))
+                loss.append(F.cross_entropy(y_hat, y))
     return sum(acc) / len(acc), sum(loss) / len(loss)
 
 
@@ -79,9 +81,10 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, is_unsupervised=Tru
             labels = labels.to(device)
             if is_unsupervised:
                 emb, pre_labels = net(*X, labels.shape)
+                l = F.binary_cross_entropy_with_logits(pre_labels.reshape(labels.shape).float(), labels.float())
             else:
                 emb, pre_labels = net(*X, None, None, None, None, None)
-            l = loss(pre_labels, labels)
+                l = loss(pre_labels, labels)
             l.backward()
             optimizer.step()
             if total_batch % 20 == 0:
