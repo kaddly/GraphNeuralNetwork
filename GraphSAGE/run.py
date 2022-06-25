@@ -1,15 +1,16 @@
 import torch
-from GraphSAGE import GraphSage
-from train_eval import train
+from GraphSAGE import GraphSAGE
 from data_utils import load_pubmed_data
+from train_eval import train
 
 if __name__ == '__main__':
-    lr, num_epochs, batch_size, device = 0.01, 5, 64, torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    num_layers, hidden_size = 2, 500
-    sample_neigh, Unsupervised = 10, True
-    train_iter, val_iter, test_iter, feat_data, labels, adj_lists = load_pubmed_data('./data/pubmed-data', batch_size,
-                                                                                     sample_neigh,
-                                                                                     Unsupervised=Unsupervised)
-    net = GraphSage(num_layers, len(feat_data[0]), hidden_size, feat_data, adj_lists, device, gcn=False, agg_func='MEAN',
-                    Unsupervised=Unsupervised)
-    train(net, train_iter, val_iter, lr, num_epochs, device, Unsupervised)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    is_gcn, is_unsupervised = False, False
+    num_neighs, num_layers = 10, 2
+    batch_size, num_epochs, lr = 64, 10, 0.002
+    input_size, hidden_size = 500, 128
+    train_iter, val_iter, test_iter = load_pubmed_data('./data/pubmed-data', batch_size, num_layers,
+                                                       num_neighs, window_size=5, num_noise_words=5, is_gcn=is_gcn,
+                                                       is_unsupervised=is_unsupervised)
+    net = GraphSAGE(num_layers, input_size, hidden_size, is_gcn, agg_func="MEAN", Unsupervised=is_unsupervised, class_size=3)
+    train(net, train_iter, val_iter, lr, num_epochs, device, is_unsupervised)
