@@ -143,12 +143,12 @@ class collate_fn:
             contexts_negatives_neigh_nodes_map = torch.tensor(contexts_negatives_neigh_nodes_map)
             contexts_negatives_nodes_map = torch.tensor(contexts_negatives_nodes_map)
 
-            return torch.embedding(self.feat_data, center_nodes_map[0]), center_nodes_map[1:], \
-                   torch.embedding(self.feat_data, center_neigh_nodes_map[0]), center_neigh_nodes_map[1:], \
-                   torch.embedding(self.feat_data, contexts_negatives_nodes_map[0]), contexts_negatives_nodes_map[1:], \
-                   torch.embedding(self.feat_data,
-                                   contexts_negatives_neigh_nodes_map[0]), contexts_negatives_neigh_nodes_map[1:], \
-                   torch.tensor(batch_labels)
+            return (torch.embedding(self.feat_data, center_nodes_map[0]), center_nodes_map[1:], \
+                    torch.embedding(self.feat_data, center_neigh_nodes_map[0]), center_neigh_nodes_map[1:], \
+                    torch.embedding(self.feat_data, contexts_negatives_nodes_map[0]), contexts_negatives_nodes_map[1:], \
+                    torch.embedding(self.feat_data,
+                                    contexts_negatives_neigh_nodes_map[0]),
+                    contexts_negatives_neigh_nodes_map[1:]), torch.tensor(batch_labels)
 
         else:
             data = list(map(list, zip(*data)))
@@ -157,8 +157,8 @@ class collate_fn:
                                                              self.is_gcn)
             neigh_nodes_map = torch.tensor(neigh_nodes_map)
             nodes_map = torch.tensor(nodes_map)
-            return torch.embedding(self.feat_data, nodes_map[0]), nodes_map[1:], \
-                   torch.embedding(self.feat_data, neigh_nodes_map[0]), neigh_nodes_map[1:], batch_labels
+            return (torch.embedding(self.feat_data, nodes_map[0]), nodes_map[1:], \
+                    torch.embedding(self.feat_data, neigh_nodes_map[0]), neigh_nodes_map[1:]), batch_labels
 
 
 def load_pubmed_data(data_dir, batch_size, num_layers, num_neighs, window_size=5, num_noise_words=5, is_gcn=False,
