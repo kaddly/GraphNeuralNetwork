@@ -6,6 +6,12 @@ import os
 from datetime import timedelta
 
 
+def accuracy_binary_logits(y_hat, y):
+    y_hat.reshape(y.shape)
+    cmp = (torch.sigmoid(y_hat) > 0.5) == y
+    return float(cmp.sum()/cmp.numel())
+
+
 def accuracy(y_hat, y):
     """Compute the number of correct predictions.
 
@@ -38,7 +44,7 @@ def evaluate_accuracy_gpu(net, data_iter, is_unsupervised, device=None):
             y = y.to(device)
             if is_unsupervised:
                 _, y_hat = net(*X, y.shape)
-                acc.append(accuracy(y_hat, y))
+                acc.append(accuracy_binary_logits(y_hat, y))
                 loss.append(F.binary_cross_entropy_with_logits(y_hat.reshape(y.shape).float(), y.float()))
             else:
                 _, y_hat = net(*X, None, None, None, None, None)
@@ -88,7 +94,7 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, is_unsupervised=Tru
             l.backward()
             optimizer.step()
             if total_batch % 20 == 0:
-                train_acc = accuracy(pre_labels, labels)
+                train_acc = accuracy_binary_logits(pre_labels, labels) if is_unsupervised else accuracy(pre_labels, labels)
                 dev_acc, dev_loss = evaluate_accuracy_gpu(net, val_iter, is_unsupervised)
                 if dev_loss < dev_best_loss:
                     torch.save(net.state_dict(), os.path.join(parameter_path, model_file + '.ckpt'))
