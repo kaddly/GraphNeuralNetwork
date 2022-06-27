@@ -6,9 +6,9 @@ import os
 from datetime import timedelta
 
 
-def accuracy_binary_logits(y_hat, y):
+def accuracy_binary_logits(y_hat, y, alpha=0.5):
     y_hat.reshape(y.shape)
-    cmp = (torch.sigmoid(y_hat) > 0.5) == y
+    cmp = (torch.sigmoid(y_hat) > alpha) == y
     return float(cmp.sum()/cmp.numel())
 
 
