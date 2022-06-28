@@ -5,9 +5,15 @@ from .layers import GraphAttentionLayer, SpGraphAttentionLayer
 
 
 class GAT(nn.Module):
+<<<<<<< HEAD
     def __init__(self, nfeat, nhid, nclass, dropout, alpha, nheads, **kwargs):
         """Dense version of GAT."""
         super(GAT, self).__init__(**kwargs)
+=======
+    def __init__(self, nfeat, nhid, nclass, dropout, alpha, nheads):
+        """Dense version of GAT."""
+        super(GAT, self).__init__()
+>>>>>>> origin/master
         self.dropout = dropout
 
         self.attentions = [GraphAttentionLayer(nfeat, nhid, dropout=dropout, alpha=alpha, concat=True) for _ in range(nheads)]
@@ -25,9 +31,15 @@ class GAT(nn.Module):
 
 
 class SpGAT(nn.Module):
+<<<<<<< HEAD
     def __init__(self, nfeat, nhid, nclass, dropout, alpha, nheads, **kwargs):
         """Sparse version of GAT."""
         super(SpGAT, self).__init__(**kwargs)
+=======
+    def __init__(self, nfeat, nhid, nclass, dropout, alpha, nheads):
+        """Sparse version of GAT."""
+        super(SpGAT, self).__init__()
+>>>>>>> origin/master
         self.dropout = dropout
 
         self.attentions = [SpGraphAttentionLayer(nfeat,
