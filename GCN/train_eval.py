@@ -58,7 +58,7 @@ def train(model, data_iter, lr, num_epochs, device):
             else:
                 improve = ''
             time_dif = timedelta(seconds=int(round(time.time() - start_time)))
-            msg = 'Epoch [{0}/{1}]:  total_loss: {2:>5.3f},  total_acc: {3:>5.3f}, val_loss: {4:>5.3f}, val_acc: {5:>5.3f}, Time: {6} {7}'
+            msg = 'Epoch [{0}/{1}]:  total_loss: {2:>5.3f},  total_acc: {3:>6.2%}, val_loss: {4:>5.3f}, val_acc: {5:>6.2%}, Time: {6} {7}'
             print(msg.format(epoch + 1, num_epochs, train_loss.item(), train_acc, val_loss.item(),
                              accuracy(output[idx_val], labels[idx_val]), time_dif,
                              improve))
