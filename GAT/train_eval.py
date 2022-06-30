@@ -65,7 +65,7 @@ def train(model, data_iter, lr, num_epochs, device):
     if not os.path.exists(parameter_path):
         os.mkdir(parameter_path)
     adj, features, labels, idx_train, idx_val, idx_test = [data.to(device) for data in data_iter]
-    lr_scheduler = create_lr_scheduler(optimizer, num_epochs, num_epochs, warmup=True)
+    lr_scheduler = create_lr_scheduler(optimizer, 1, num_epochs, warmup=True)
     for epoch in range(num_epochs):
         model.train()
         optimizer.zero_grad()
@@ -88,7 +88,7 @@ def train(model, data_iter, lr, num_epochs, device):
             else:
                 improve = ''
             time_dif = timedelta(seconds=int(round(time.time() - start_time)))
-            msg = 'Epoch [{0}/{1}]:  train_loss: {2:>5.3f},  train_acc: {3:>5.3f},  train_lr: {4:>5.3f},  val_loss: {5:>5.3f}, val_acc: {6:>5.3f}, Time: {7} {8}'
+            msg = 'Epoch [{0}/{1}]:  train_loss: {2:>5.3f},  train_acc: {3:>6.2%},  train_lr: {4:>5.3f},  val_loss: {5:>5.3f}, val_acc: {6:>6.2%}, Time: {7} {8}'
             print(msg.format(epoch + 1, num_epochs, train_loss.item(), train_acc, lr, val_loss.item(),
                              accuracy(output[idx_val], labels[idx_val]), time_dif,
                              improve))
