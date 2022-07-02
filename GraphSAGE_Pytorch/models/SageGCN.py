@@ -37,5 +37,4 @@ class SageGCN(nn.Module):
 
     def extra_repr(self):
         output_dim = self.hidden_dim if self.aggr_hidden_method == "sum" else self.hidden_dim * 2
-        return 'in_features={}, out_features={}, aggr_hidden_method={}'.format(
-            self.input_dim, output_dim, self.aggr_hidden_method)
+        return 'in_features={}, out_features={}, aggr_hidden_method={}'.format(self.input_dim, output_dim, self.aggr_hidden_method)
