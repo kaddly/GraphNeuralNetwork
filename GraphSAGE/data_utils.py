@@ -40,7 +40,7 @@ def read_pubmed_data(data_dir):
     return feat_data, labels, adj_lists
 
 
-def train_test_split(node_nums, test_split=0.6, val_split=0.3):
+def train_test_split(node_nums, test_split=0.3, val_split=0.2):
     test_size = int(node_nums * test_split)
     val_size = int(node_nums * val_split)
     train_size = node_nums - (test_size + val_size)

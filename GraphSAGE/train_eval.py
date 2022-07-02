@@ -6,10 +6,37 @@ import os
 from datetime import timedelta
 
 
+def create_lr_scheduler(optimizer,
+                        num_step: int,
+                        epochs: int,
+                        warmup=True,
+                        warmup_epochs=1,
+                        warmup_factor=1e-3):
+    assert num_step > 0 and epochs > 0
+    if warmup is False:
+        warmup_epochs = 0
+
+    def f(x):
+        """
+        根据step数返回一个学习率倍率因子，
+        注意在训练开始之前，pytorch会提前调用一次lr_scheduler.step()方法
+        """
+        if warmup is True and x <= (warmup_epochs * num_step):
+            alpha = float(x) / (warmup_epochs * num_step)
+            # warmup过程中lr倍率因子从warmup_factor -> 1
+            return warmup_factor * (1 - alpha) + alpha
+        else:
+            # warmup后lr倍率因子从1 -> 0
+            # 参考deeplab_v2: Learning rate policy
+            return (1 - (x - warmup_epochs * num_step) / ((epochs - warmup_epochs) * num_step)) ** 0.9
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=f)
+
+
 def accuracy_binary_logits(y_hat, y, alpha=0.5):
     y_hat.reshape(y.shape)
     cmp = (torch.sigmoid(y_hat) > alpha) == y
-    return float(cmp.sum()/cmp.numel())
+    return float(cmp.sum() / cmp.numel())
 
 
 def accuracy(y_hat, y):
@@ -57,9 +84,11 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, is_unsupervised=Tru
     def init_weights(m):
         if type(m) == nn.Linear:
             nn.init.xavier_uniform_(m.weight)
+
     net.apply(init_weights)
     net = net.to(device)
-    optimizer = torch.optim.Adam(params=net.parameters(), lr=lr)
+    optimizer = torch.optim.SGD(params=net.parameters(), lr=lr, weight_decay=1e-4)
+    lr_scheduler = create_lr_scheduler(optimizer, len(train_iter), num_epochs)
     loss = nn.CrossEntropyLoss()
     start_time = time.time()
 
@@ -93,6 +122,8 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, is_unsupervised=Tru
                 l = loss(pre_labels, labels)
             l.backward()
             optimizer.step()
+            lr_scheduler.step()
+            lr = optimizer.param_groups[0]["lr"]
             if total_batch % 20 == 0:
                 train_acc = accuracy_binary_logits(pre_labels, labels) if is_unsupervised else accuracy(pre_labels, labels)
                 dev_acc, dev_loss = evaluate_accuracy_gpu(net, val_iter, is_unsupervised)
@@ -104,15 +135,42 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, is_unsupervised=Tru
                 else:
                     improve = ''
                 time_dif = timedelta(seconds=int(round(time.time() - start_time)))
-                msg = 'Iter: {0:>6},  Train Loss: {1:>5.4},  Train Acc: {2:>6.2%},  Val Loss: {3:>5.4},  Val Acc: {4:>6.2%},  Time: {5} {6}'
-                print(msg.format(total_batch, l.item(), train_acc, dev_loss, dev_acc, time_dif, improve))
-
+                msg = 'Iter: {0:>6},  Train Loss: {1:>5.4},  Train Acc: {2:>6.2%},  Train lr: {3:>5.4},  Val Loss: {4:>5.4},  Val Acc: {5:>6.2%},  Time: {6} {7}'
+                print(msg.format(total_batch, l.item(), train_acc, lr, dev_loss, dev_acc, time_dif, improve))
                 net.train()
             total_batch += 1
-            if total_batch - last_improve > 2000:
+            if total_batch - last_improve > 1000:
                 # 验证集loss超过1000batch没下降，结束训练
                 print("No optimization for a long time, auto-stopping...")
                 flag = True
                 break
         if flag:
             break
+
+
+def test(model, data_iter, device, is_unsupervised=True):
+    if not os.path.exists('./saved_dict/GraphSAGE/GraphSAGE.ckpt'):
+        print('please train before!')
+        return
+    model.load_state_dict(torch.load('./saved_dict/GraphSAGE/GraphSAGE.ckpt'), False)
+    model.to(device)
+    model.eval()
+    with torch.no_grad():
+        acc, loss = [], []
+        for X, y in data_iter:
+            if isinstance(X, tuple):
+                X = [x.to(device) for x in X]
+            else:
+                X = X.to(device)
+            y = y.to(device)
+            if is_unsupervised:
+                _, y_hat = model(*X, y.shape)
+                acc.append(accuracy_binary_logits(y_hat, y))
+                loss.append(F.binary_cross_entropy_with_logits(y_hat.reshape(y.shape).float(), y.float()))
+            else:
+                _, y_hat = model(*X, None, None, None, None, None)
+                acc.append(accuracy(y_hat, y))
+                loss.append(F.cross_entropy(y_hat, y))
+    print("Test set results:",
+          "loss= {:.4f}".format(sum(loss)/len(loss)),
+          "accuracy= {:.4f}".format(sum(acc)/len(acc)))
