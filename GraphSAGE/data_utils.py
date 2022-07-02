@@ -166,7 +166,6 @@ def load_pubmed_data(data_dir, batch_size, num_layers, num_neighs, window_size=5
                      is_unsupervised=True):
     feat_data, labels, adj_lists = read_pubmed_data(data_dir)
     nodes = list(range(len(adj_lists)))
-    random.shuffle(nodes)
     train_size, val_size, test_size = train_test_split(len(adj_lists))
     batchify = collate_fn(adj_lists, feat_data, num_layers, num_neighs, is_gcn, is_unsupervised)
     if is_unsupervised:

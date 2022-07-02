@@ -5,7 +5,7 @@ from train_eval import train
 
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    is_gcn, is_unsupervised = False, True
+    is_gcn, is_unsupervised = False, False
     num_neighs, num_layers = 10, 2
     batch_size, num_epochs, lr = 32, 50, 0.01
     input_size, hidden_size = 500, 128
