@@ -6,12 +6,7 @@ import os
 from datetime import timedelta
 
 
-def create_lr_scheduler(optimizer,
-                        num_step: int,
-                        epochs: int,
-                        warmup=True,
-                        warmup_epochs=1,
-                        warmup_factor=1e-3):
+def create_lr_scheduler(optimizer, num_step: int, epochs: int, warmup=True, warmup_epochs=1, warmup_factor=1e-3):
     assert num_step > 0 and epochs > 0
     if warmup is False:
         warmup_epochs = 0
@@ -125,7 +120,8 @@ def train(net, train_iter, val_iter, lr, num_epochs, device, is_unsupervised=Tru
             lr_scheduler.step()
             lr = optimizer.param_groups[0]["lr"]
             if total_batch % 20 == 0:
-                train_acc = accuracy_binary_logits(pre_labels, labels) if is_unsupervised else accuracy(pre_labels, labels)
+                train_acc = accuracy_binary_logits(pre_labels, labels) if is_unsupervised else accuracy(pre_labels,
+                                                                                                        labels)
                 dev_acc, dev_loss = evaluate_accuracy_gpu(net, val_iter, is_unsupervised)
                 if dev_loss < dev_best_loss:
                     torch.save(net.state_dict(), os.path.join(parameter_path, model_file + '.ckpt'))
@@ -172,5 +168,5 @@ def test(model, data_iter, device, is_unsupervised=True):
                 acc.append(accuracy(y_hat, y))
                 loss.append(F.cross_entropy(y_hat, y))
     print("Test set results:",
-          "loss= {:.4f}".format(sum(loss)/len(loss)),
-          "accuracy= {:.4f}".format(sum(acc)/len(acc)))
+          "loss= {:.4f}".format(sum(loss) / len(loss)),
+          "accuracy= {:.4f}".format(sum(acc) / len(acc)))
