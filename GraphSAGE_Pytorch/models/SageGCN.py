@@ -5,7 +5,7 @@ from models.Aggregator import NeighborAggregator
 
 
 class SageGCN(nn.Module):
-    def __init__(self, input_dim, hidden_dim, activation=F.relu, aggr_neighbor_method="mean", aggr_hidden_method="sum",
+    def __init__(self, input_dim, hidden_dim, activation=F.relu, aggr_neighbor_method="mean", aggr_hidden_method="concat",
                  **kwargs):
         super(SageGCN, self).__init__(**kwargs)
         assert aggr_neighbor_method in ["mean", "sum", "max"]

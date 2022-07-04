@@ -6,7 +6,7 @@ import random
 from sample_utils import multihop_sampling
 
 
-def read_pubmed_data(data_dir, dataset='pubmed'):
+def read_pubmed_data(data_dir, dataset='pubmed-data'):
     data_dir = os.path.join(data_dir, dataset)
     pubmed_cite_file = os.path.join(data_dir, 'Pubmed-Diabetes.DIRECTED.cites.tab')
     pubmed_content_file = os.path.join(data_dir, 'Pubmed-Diabetes.NODE.paper.tab')
@@ -52,11 +52,17 @@ def train_test_split(node_nums, test_split=0.6, val_split=0.3):
 class collate_fn:
     def __init__(self, adj_lists, feat_data, num_neighbor_list):
         self.adj_lists = adj_lists
-        self.feat_data = torch.Tensor(feat_data)
+        self.feat_data = feat_data
         self.num_neighbor_list = num_neighbor_list
 
     def __call__(self, data):
-        pass
+        data = list(map(list, zip(*data)))
+        batch_labels = torch.tensor(data[1])
+        batch_sampling_nodes = multihop_sampling(data[0], self.num_neighbor_list, self.adj_lists)
+        batch_sampling_feature = []
+        for sampling_nodes in batch_sampling_nodes:
+            batch_sampling_feature.append(torch.Tensor([self.feat_data[idx] for idx in sampling_nodes]))
+        return batch_sampling_feature, batch_labels
 
 
 class Pubmed_dataset(Dataset):
@@ -72,17 +78,20 @@ class Pubmed_dataset(Dataset):
         return len(self.nodes)
 
 
-def load_pubmed_data(data_dir, batch_size, val_split, test_split):
+def load_pubmed_data(data_dir, batch_size, val_split, test_split, num_neighbor_list):
     feat_data, labels, adj_lists = read_pubmed_data(data_dir)
     all_nodes = list(range(len(feat_data)))
+    random.shuffle(all_nodes)
+    labels = [labels[i] for i in all_nodes]
     train_size, val_size, test_size = train_test_split(len(all_nodes), val_split=val_split, test_split=test_split)
+    batchfy = collate_fn(adj_lists, feat_data, num_neighbor_list)
 
     train_dataset = Pubmed_dataset(all_nodes[:train_size], labels[:train_size])
     val_dataset = Pubmed_dataset(all_nodes[train_size:train_size + val_size], labels[train_size:train_size+val_size])
     test_dataset = Pubmed_dataset(all_nodes[-test_size:], labels[-test_size:])
 
-    train_iter = DataLoader(train_dataset, batch_size)
-    val_iter = DataLoader(val_dataset, batch_size)
-    test_iter = DataLoader(test_dataset, batch_size)
+    train_iter = DataLoader(train_dataset, batch_size, collate_fn=batchfy)
+    val_iter = DataLoader(val_dataset, batch_size, collate_fn=batchfy)
+    test_iter = DataLoader(test_dataset, batch_size, collate_fn=batchfy)
 
-    return train_iter, val_iter, test_iter, feat_data, labels, adj_lists
+    return train_iter, val_iter, test_iter

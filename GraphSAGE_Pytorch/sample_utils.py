@@ -10,9 +10,9 @@ def sampling(src_nodes, sample_num, neighbor_table):
     for sid in src_nodes:
         # 从节点的邻居中进行有放回地进行采样
         if len(neighbor_table[sid]) < sample_num:
-            res = random.choices(neighbor_table[sid], k=sample_num)
+            res = random.choices(list(neighbor_table[sid]), k=sample_num)
         else:
-            res = random.sample(neighbor_table[sid], k=sample_num)
+            res = random.sample(list(neighbor_table[sid]), k=sample_num)
         results.extend(res)
     return results
 
