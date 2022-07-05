@@ -1,7 +1,7 @@
 import torch
 from data_utils import load_pubmed_data
 from models import GraphSage
-from train_eval import train
+from train_eval import train, test
 
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -12,4 +12,5 @@ if __name__ == '__main__':
     train_iter, val_iter, test_iter = load_pubmed_data('../GraphSAGE/data', batch_size, val_split, test_split,
                                                        num_neighbor_list)
     model = GraphSage(input_dim, hidden_dim, num_neighbor_list)
-    train(model, train_iter, val_iter, lr, num_epochs, device)
+    # train(model, train_iter, val_iter, lr, num_epochs, device)
+    test(model, test_iter, device)

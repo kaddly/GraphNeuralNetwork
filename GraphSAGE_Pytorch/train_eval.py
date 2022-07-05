@@ -126,3 +126,26 @@ def train(net, train_iter, val_iter, lr, num_epochs, device):
                 break
         if flag:
             break
+
+
+def test(model, data_iter, device=None):
+    if not os.path.exists('./saved_dict/GraphSAGE/GraphSAGE.ckpt'):
+        print('please train before!')
+        return
+    model.load_state_dict(torch.load('./saved_dict/GraphSAGE/GraphSAGE.ckpt'), False)
+    model.to(device)
+    model.eval()
+    with torch.no_grad():
+        acc, loss = [], []
+        for X, y in data_iter:
+            if isinstance(X, list):
+                X = [x.to(device) for x in X]
+            else:
+                X = X.to(device)
+            y = y.to(device)
+            y_hat = model(X)
+            acc.append(accuracy(y_hat, y))
+            loss.append(F.cross_entropy(y_hat, y))
+    print("Test set results:",
+          "loss= {:.4f}".format(sum(loss) / len(loss)),
+          "accuracy= {:.4f}".format(sum(acc) / len(acc)))
