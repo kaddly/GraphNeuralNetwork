@@ -72,7 +72,7 @@ class Pubmed_dataset(Dataset):
         self.labels = labels
 
     def __getitem__(self, item):
-        return self.nodes[item], self.labels
+        return self.nodes[item], self.labels[item]
 
     def __len__(self):
         return len(self.nodes)
@@ -80,12 +80,11 @@ class Pubmed_dataset(Dataset):
 
 def load_pubmed_data(data_dir, batch_size, val_split, test_split, num_neighbor_list):
     feat_data, labels, adj_lists = read_pubmed_data(data_dir)
-    all_nodes = list(range(len(feat_data)))
+    all_nodes = list(range(len(adj_lists)))
     random.shuffle(all_nodes)
     labels = [labels[i] for i in all_nodes]
     train_size, val_size, test_size = train_test_split(len(all_nodes), val_split=val_split, test_split=test_split)
     batchfy = collate_fn(adj_lists, feat_data, num_neighbor_list)
-
     train_dataset = Pubmed_dataset(all_nodes[:train_size], labels[:train_size])
     val_dataset = Pubmed_dataset(all_nodes[train_size:train_size + val_size], labels[train_size:train_size+val_size])
     test_dataset = Pubmed_dataset(all_nodes[-test_size:], labels[-test_size:])
