@@ -1,4 +1,4 @@
-# [Graph Basis](./Basis/README.md)
+# [Graph Basis](./Basis)
 
 - 图的表示
 - 图的特征
@@ -11,7 +11,7 @@
   - Page Rank
   - HITS
 
-# [Graph Embedding](./GraphEmbedding/README.md)
+# [Graph Embedding](./GraphEmbedding)
 
 - DeepWalk
 - LINK
@@ -21,7 +21,7 @@
 
 # Graph Neural Network
 
-- [GCN](./GCN/README.md)
+- [GCN](./GCN/README)
 - GraphSAGE
 - GAT
 
