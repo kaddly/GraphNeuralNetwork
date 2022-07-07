@@ -21,15 +21,9 @@
 
 # Graph Neural Network
 
-<<<<<<< HEAD
 - [GCN](./GCN)
 - [GraphSAGE](./GraphSAGE)
 - [GAT](./GAT)
-=======
-- [GCN](./GCN/README)
-- GraphSAGE
-- GAT
->>>>>>> origin/master
 
 
 
