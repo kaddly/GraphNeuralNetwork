@@ -347,3 +347,61 @@ f*g_{\theta}=Ug_{\theta}U^Tf=U
 	&		&		\hat{g(\lambda _{n})}\\
 \end{matrix} \right)U^Tf
 $$
+
+## 3.6 图卷积神经网络的
+
+Deep learning 中的Graph Convolution直接看上去会和第6节推导出的图卷积公式有很大的不同，但是万变不离其宗，都是根据下式来推导的：
+$$
+g_{\theta}*x=Ug_{\theta}U^Tx=U
+\left( \begin{matrix}
+	\hat{g(\lambda_1)}& &	\\
+	&		...&		\\
+	&		&		\hat{g(\lambda _{n})}\\
+\end{matrix} \right)U^Tx
+$$
+Deep learning 中的Convolution就是要**设计含有trainable共享参数的kernel**。
+
+上式**计算量很大**，因为**特征向量矩阵U 的复杂度**是$O(n^2)$。此外，对于大型图，**L特征分解的计算量也很大**
+
+基于上面最原始的卷积公式，深度学习中的GCN主要是从下面几篇文章演变而来的
+
+- Bruna, Joan, et al. “**Spectral networks and locally connected networks on graphs**.” 源于ICLR 2014
+- Defferrard, Michaël, Xavier Bresson, and Pierre Vandergheynst. “**Convolutional neural networks on graphs with fast localized spectral filtering.**” 源于NIPS 2016
+- Hammond, David K., Pierre Vandergheynst, and Rémi Gribonval. “**Wavelets on graphs via spectral graph theory.**” Applied and Computational Harmonic Analysis 30.2 (2011)
+- Kipf, Thomas N., and Max Welling. “**Semi-supervised classification with graph convolutional networks**.” 源于ICML 2017 
+
+### Spectral CNN
+
+谱CNN源于论文(J. Bruna, W. Zaremba, A. Szlam, and Y. LeCun, “Spectral networks and locally connected networks on graphs,” in Proceedings of International Conference on Learning Representations, 2014)，Bruna等人，第一次提出谱卷积神经网络。他们简单地把$g_{\theta}$看作是一个可以学习参数的集合：$g_{\theta}=\theta_{i,j}^k$。并且假设图信号是多维的，图卷积层顶定义为：
+$$
+X_{:,j}^{k+1}=\sigma(\sum^{f_{k-1}}_{i=1}U\theta^k_{i,j}U^TX_{:,j}^k)(j=1,2,3...f_k)
+$$
+
+- $X^k\in R^{N*f_{k-1}}$是输入图信号，对应图上就是点的输入特征
+- N是节点数
+- $f_{k-1}$是输入通道数量
+- $f_k$是输出通道数量
+- $\theta_{i,j}^k$是一个可学习参数的对角矩阵,就跟三层神经网络中的weight一样是任意的参数，通过初始化赋值然后利用误差反向传播进行调整
+- $\sigma(.)$是激活函数
+
+第一代的参数方法存在着一些弊端，主要在于：
+
+1. **计算复杂**：如果一个样本一个图，那么每个样本都需要进行图的拉普拉斯矩阵的特征分解求U矩阵计算复杂；每一次前向传播，都要计算$U,diag(\theta_l)$及$U^T$三者的乘积，特别是对于大规模的graph，计算的代价太高，需要$O(n^2)$的计算复杂度
+2. **是非局部性连接的**
+3. 卷积核需要N个参数，当图中的节点N很大时是不可取的
+
+### Chebyshev谱CNN（ChebNet）
+
+Chebyshev谱CNN源于论文(M. Defferrard, X. Bresson, and P. Vandergheynst, “Convolutional neural networks on graphs with fast localized spectral filtering,”in Advances in Neural Information Processing Systems, 2016)。Defferrard等人提出ChebNet，定义特征向量对角矩阵的切比雪夫多项式为滤波器，也就是：
+$$
+g_{\theta}=g_{\theta}(\Lambda)\approx\sum^{K-1}_{i=0}\theta_iT_k(\hat{\Lambda})
+$$
+其实，就是利用Chebyshev多项式拟合卷积核的方法，来降低计算复杂度。
+
+推导过程如下：
+
+考虑信号$x\in R^N$（x就是graph上对应于每个顶点的feathure vector，即由数据集提取特征构成的向量，而不是和线性代数中常说的特征向量，注意区别）与以参数为$\theta\in R^N$的滤波器$g_{\theta}=diag(\theta)$在傅里叶域的普卷积。
+$$
+g_{\theta}*x=Ug_{\theta}U^Tx
+$$
+其中
