@@ -405,3 +405,156 @@ $$
 g_{\theta}*x=Ug_{\theta}U^Tx
 $$
 其中
+
+- U 是对称归一化的拉普拉斯(normalized graph Laplacian)算子L的特征向量矩阵，$\Lambda$是由L的特征值构成的对角矩阵。
+
+由于normalized graph Laplacian矩阵L是实对称矩阵, 因此其特征向量矩阵U是正交矩阵,即$U^TU=I_N$
+
+- $U^Tx$是x的傅里叶变换
+- $g_{\theta}$是由参数θ构成的对角矩阵diag(θ)。由于参数θ的确定与L的特征值有关,作者认为$g_{\theta}$是特征值$\Lambda$的一个函数，即令
+
+$$
+g_{\theta}=g_{\theta}(\Lambda)
+$$
+
+由于卷积公式的计算量大，因为**特征向量矩阵U 的复杂度**是$O(n^2)$。此外对于大型图来说，**L特征值分解的计算量也很大**。
+为了解决这个问题，[Hammond et al.(2011) ：Wavelets on graphs via spectral graph theory](https://hal.inria.fr/inria-00541855/document)指出$g_{\theta}(\Lambda)$可以很好的通过Chebyshev多项式$T_k(x)$的kth-阶截断展开拟合，并**对Λ进行scale使其元素位于[−1,1]**：
+$$
+g_{\theta}(\Lambda)\approx\sum^K_{k=0}\theta_kT_k(\hat{\Lambda})
+$$
+其中
+
+- $\hat{\Lambda}=2\Lambda/\lambda_{max}-I_N$(为缩放后的特征向量矩阵,缩放后范围是[−1,1]，单位矩阵的特征值是n重1)，缩放的目的是为了满足Chebyshev多项式$T_k(x)$的$K^{th}$阶断展开的条件：自变量范围需要【-1，1】之间
+- $\lambda_{max}$是L 的最大特征值，也叫**谱半径**。
+- $\theta\in R^K$ 是切比雪夫系数的向量
+- Chebyshev多项式递归定义为$T_k(x)=2xT_{k-1}(x)-T_{k-2}(x)$，其中$T_0(x)=1,T_1(x)=x$。
+
+回到对信号x与滤波器$g_{\theta}$的卷积的定义，现在有：
+$$
+g_{\theta}*x=\sum^K_{k=0}\theta_kT_k(\hat{L})x
+$$
+其中：
+
+- $\hat{L}=2L/\lambda_{max}-I_N=U\hat{\Lambda}U^T$
+- $(U\Lambda U^T)^k=U\Lambda^kU^T$
+
+现在，相比于第一种Spectral CNN：
+
+- 此表达式现在是K-localized，具有局部连接性，因为它是拉普拉斯算子中的Kth-阶多项式，即它仅取决于离中央节点(Kth阶邻域)最大K步的节点
+- $T_k(\hat{L})x$**的复杂度是O(|E|)**，即与边数E呈线性关系，整个运算的复杂度是$O(K|E|)$。当Graph是稀疏图的时候，计算加速尤为明显，这个时候复杂度远低于$O(n^2)$
+
+### CayleyNet
+
+CayleyNet进一步应用了参数有理复合函数的Cayley多项式来捕获窄的频带。CayleyNet的谱图卷积定义为
+$$
+x*g_{\theta}=x_0+2Re(\sum_{j=1}^rc_j(hL-iI)^j(hL+iI)^{-j}x)
+$$
+其中
+
+- $Re(.)$为复数的实部
+- $c_0$为实数
+- $c_i$为虚部
+- i为序数
+- h为控制Cayley滤波器谱域的参数
+
+CayleyNet在保留空间局部性的同时，说明ChebNet可以看作是CayleyNet的一个特例。
+
+### 一阶ChebNet（1stChebNet）-GCN
+
+一阶ChebNet源于论文（T. N. Kipf and M.Welling, “Semi-supervised classification with graph convolutional networks,” in Proceedings of the International Conference on Learning Representations, 2017）。这篇论文基于前面的工作，正式成为GCN的开山之作，后面很多变种都是基于这篇文章的。
+
+该篇论文贡献有两点：
+
+- 作者对于直接操作于图结构数据的网络模型根据频谱图卷积(Hammond等人于2011年提出的Wavelets on graphs via spectral graph theory)使用一阶近似简化计算的方法，提出了一种简单有效的层式传播方法。
+- 作者验证了图结构神经网络模型可用于快速可扩展式的处理图数据中节点半监督分类问题，作者通过在一些公有数据集上验证了自己的方法的效率和准确率能够媲美现有的顶级半监督方法。
+
+下面介绍ChebNet的一阶近似方法：
+Kipf等人引入了一种一阶近似ChebNet。假设$K=1,\lambda_{max}=2$，则ChebNet卷积公式可以简化近似为：
+$$
+x*g_{\theta}=\theta_0x-\theta_1D^{-1/2}AD^{1/2}x
+$$
+为了抑制参数数量防止过拟合，1stChebNet假设$\theta=\theta_0=-\theta_1$，图卷积的定义就近似为：
+$$
+g_{\theta}*x=\theta(I_N+D^{-1/2}AD^{1/2})x
+$$
+其中
+
+- $I_N+D^{-1/2}AD^{1/2}$是有范围【0，2】的特征值。因此，如果在深度神经网络模型中使用该算子，则会反复应用该算子对导致数值不稳定(发散)和梯度消失/爆炸
+
+为了解决该问题, 引入了一个renormalization trick：
+$$
+I_N+D^{-1/2}AD^{1/2}\to\tilde{D}^{-1/2}\tilde{A}\tilde{D}^{1/2}
+$$
+其中
+
+- $\tilde{A}=A+I_N,\tilde{D}_{i,j}=\sum_j\tilde{A}_{i,j}$，即图上加了自环
+
+再加上一个激活函数，最后就可以得到了论文中的快速卷积公式：
+$$
+H^{(l+1)}=f(H^l,A)=\sigma(\tilde{D}^{-1/2}\tilde{A}\tilde{D}^{1/2}H^{(l)}W^{(l)})
+$$
+
+- W就是参数$\theta$参数矩阵
+
+优点
+
+1. 权值共享，参数共享，从AXW可以看出每一个节点的参数矩阵都是W，权值共享；
+2. 具有局部性Local Connectivity，也就是局部连接的，因为每次聚合的只是一阶邻居；
+   上述两个特征也是CNN中进行参数减少的核心思想
+3. 感受野正比于卷积层层数，第一层的节点只包含与直接相邻节点有关的信息，第二层以后，每个节点还包含相邻节点的相邻节点的信息，这样的话，参与运算的信息就会变多。层数越多，感受野越大，参与运算的信息量越充分。也就是说随着卷积层的增加，从远处邻居的信息也会逐渐聚集过来。
+4. 复杂度大大降低，不用再计算拉普拉斯矩阵，特征分解
+
+缺点
+
+1. 扩展性差：由于训练时需要需要知道关于训练节点、测试节点在内的所有节点的邻接矩阵A ，因此是transductive的，不能处理大图，然而工程实践中几乎面临的都是大图问题，因此在扩展性问题上局限很大，为了解决transductive的的问题，GraphSAGE：Inductive Representation Learning on Large Graphs 被提出；
+2. 局限于浅层：GCN论文中表明，目前GCN只局限于浅层，实验中使用2层GCN效果最好，为了加深，需要使用残差连接等trick，但是即使使用了这些trick，也只能勉强保存性能不下降，并没有提高，Deeper Insights into Graph Convolutional Networks for Semi-Supervised Learning一文也针对When GCNs Fail ？这个问题进行了分析。虽然有一篇论文：DeepGCNs-Can GCNs Go as Deep as CNNs?就是解决GCN局限于浅层的这个问题的，但个人觉得并没有解决实质性的问题，这方面还有值得研究的空间。
+3. 不能处理有向图：理由很简单，推导过程中用到拉普拉斯矩阵的特征分解需要满足拉普拉斯矩阵是对称矩阵的条件；
+
+## 3.7 空间角度理解GCN
+
+在傅立叶域上定义出来的GCN操作，其实也可以在空间域上进行理解，其就是所谓的消息传递机制，或者说每次从邻居中聚集信息然后对中心节点进行更新。
+
+如下图所示，红色节点S1的邻居正是蓝色节点B1,B2,B3，这些邻居节点根据一定的规则将信息，也就是特征，汇总到红色节点上。
+
+<img src="./img/eaxmpe2.jpg" alt="image-20220710100934960" style="zoom:50%;" />
+
+通常来说，会加入一个线性变换矩阵W，以作为汇聚节点特征的特征维度转换（或者说是映射），于是有
+$$
+\sum_{u\in N(v)}H^{(l)}w^{(l)}
+$$
+加入激活函数
+$$
+\sigma(\sum_{u\in N(v)}H^{(l)}w^{(l)})
+$$
+上式用更为紧致的矩阵形式表达：
+$$
+H^{(l+1)}=(H^{(l)},A)=\sigma(AH^{(l)}W^{(l)})
+$$
+不难发现，其实HW的结果乘上邻接矩阵A的目的其实在于选在一阶邻居节点，其实本质就是在于邻居节点的信息传递。但是上式还可以进行一些改进，比如信息聚合时没有考虑节点自己的信息，因此可以在图中**加入一个自环**，邻接矩阵变为
+$$
+\tilde{A}=A+I_N
+$$
+度矩阵变为
+$$
+\tilde{D}_{i,j}=\sum_j\tilde{A}_{i,j}
+$$
+为了标准化（或归一化）邻接矩阵A使得**每行之和为1**，可以令：
+$$
+\tilde{A}=\tilde{D}^{-1}\tilde{A}
+$$
+这样就行归一化以后，对邻居的聚合就不是求和了而是求平均值。
+
+上式对邻接矩阵进行了标准化，这个标准化称之为random walk normalization。然而，在实际中，动态特性更为重要，因此经常使用的是renormalization（GCN论文中的叫法）：
+$$
+\tilde{A}=\tilde{D}^{-1/2}\tilde{A}\tilde{D}^{1/2}
+$$
+renormalization后有：
+$$
+L^{sym}=D^{-1/2}LD^{1/2}=D^{-1/2}(D-A)D^{1/2}=I_n-D^{-1/2}AD^{1/2}
+$$
+这就是在GCN谱方法推导中中提到的拉普拉斯矩阵要这样标准化的原因了。
+经过邻接矩阵添加自环（renormalization）之后，可以得到
+$$
+H^{(l+1)}=f(H^l,A)=\sigma(\tilde{D}^{-1/2}\tilde{A}\tilde{D}^{1/2}H^{(l)}W^{(l)})
+$$
+这就是GCN用谱方法推导出来的公式，这样就可以从空间结构的角度理解一阶ChebNet（GCN）了。
