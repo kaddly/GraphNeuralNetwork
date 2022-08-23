@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from .NodeAttention import GATConv
+from .SemanticAttention import SemanticAttention
 
 
 class HANLayer(nn.Module):
