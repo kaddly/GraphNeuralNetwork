@@ -12,3 +12,11 @@ class HANLayer(nn.Module):
 
     def forward(self):
         pass
+
+
+class HANModel(nn.Module):
+    def __init__(self, **kwargs):
+        super(HANModel, self).__init__(**kwargs)
+
+    def forward(self):
+        pass
