@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 from .NodeAttention import GATConv
 from .SemanticAttention import SemanticAttention
 
@@ -11,15 +10,31 @@ class HANLayer(nn.Module):
         self.gat_layers = nn.ModuleList()
         for i in range(num_meta_paths):
             self.gat_layers.add_module(f'meta_path_model{i}',
-                                       GATConv(in_size, out_size, layer_num_heads, dropout))
+                                       GATConv(in_size, out_size, dropout, layer_num_heads))
+        self.semantic_attention = SemanticAttention(in_size=out_size * layer_num_heads)
 
-    def forward(self):
-        pass
+    def forward(self, gs, h):
+        semantic_embeddings = []
+
+        for i, g in enumerate(gs):
+            semantic_embeddings.append(self.gat_layers[i](g, h).flatten(1))
+        semantic_embeddings = torch.stack(semantic_embeddings, dim=1)                  # (N, M, D * K)
+
+        return self.semantic_attention(semantic_embeddings)
 
 
 class HANModel(nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self, num_mate_paths, in_size, hidden_size, out_size, num_heads, dropout, **kwargs):
         super(HANModel, self).__init__(**kwargs)
+        self.layers = nn.ModuleList()
+        self.layers.append(HANLayer(num_mate_paths, in_size, hidden_size, num_heads[0], dropout))
+        for l in range(1, len(num_heads)):
+            self.layers.append(
+                HANLayer(num_mate_paths, hidden_size * num_heads[l - 1], hidden_size, num_heads[l], dropout))
+        self.predict = nn.Linear(hidden_size*num_heads[-1], out_size)
 
-    def forward(self):
-        pass
+    def forward(self, g, h):
+        for gnn in self.layers:
+            h = gnn(g, h)
+
+        return self.predict(h)

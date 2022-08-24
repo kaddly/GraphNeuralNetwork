@@ -42,17 +42,21 @@ class GraphAttentionLayer(nn.Module):
 
 
 class GATConv(nn.Module):
-    def __init__(self, feat_size, hidden_size, num_class, dropout, alpha, num_heads, **kwargs):
+    def __init__(self, feat_size, hidden_size, dropout, num_heads, alpha=0.2, num_class=None, **kwargs):
         super(GATConv, self).__init__(**kwargs)
         self.dropout = dropout
         self.attentions = nn.ModuleList()
         for i in range(num_heads):
             self.attentions.add_module(f'AttentionHead{i}',
-                                       GraphAttentionLayer(feat_size, hidden_size, dropout=dropout, alpha=alpha, concat=True))
-            self.out_att = GraphAttentionLayer(hidden_size * num_heads, num_class, dropout=dropout, alpha=alpha, concat=False)
+                                       GraphAttentionLayer(feat_size, hidden_size, dropout=dropout, alpha=alpha,
+                                                           concat=True))
+        self.num_class = num_class
+        if self.num_class is not None:
+            self.out_att = GraphAttentionLayer(hidden_size * num_heads, num_class, dropout=dropout, alpha=alpha,
+                                               concat=False)
 
     def forward(self, x, adj):
         x = F.dropout(x, self.dropout, training=self.training)
         x = torch.cat([att(x, adj) for att in self.attentions], dim=1)  # 将每层attention拼接
         x = F.dropout(x, self.dropout, training=self.training)
-        return F.elu(self.out_att(x, adj))  # 第二层的attention layer
+        return F.elu(self.out_att(x, adj)) if self.num_class is not None else F.elu(x)  # 第二层的attention layer
