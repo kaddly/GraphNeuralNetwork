@@ -2,6 +2,7 @@ import os
 import random
 import pickle
 import errno
+import scipy.io as sio
 import torch
 from torch.utils.data import DataLoader, Dataset
 
@@ -26,5 +27,9 @@ def mkdir_p(path, log=True):
             raise
 
 
-def load_data():
-    pass
+def load_data(data_dir='../data/ACM.mat'):
+    matHG = sio.loadmat(data_dir)
+    keys = matHG.keys()
+    print(keys)
+
+load_data()
