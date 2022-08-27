@@ -2,6 +2,7 @@ import os
 import random
 import pickle
 import errno
+import scipy
 import scipy.io as sio
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -32,5 +33,16 @@ def load_data(data_dir='../data/ACM.mat'):
     keys = matHG.keys()
     print(keys)
 
+
+class Heterograph:
+    def __init__(self, HGraphs: dict):
+        self.HGraphs = HGraphs
+
+    def get_mate_path_graph(self, mate_path):
+        return self.HGraphs[mate_path]*self.HGraphs[mate_path].T
+
+
+def HG_meta_path():
+    pass
 
 load_data()
