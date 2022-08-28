@@ -28,17 +28,17 @@ def mkdir_p(path, log=True):
             raise
 
 
-def load_data(data_dir='../data/ACM.mat'):
+def read_data(data_dir='../data/ACM.mat'):
     """
     异构数据处理
     :param data_dir:
     :return:
     """
     matHG = sio.loadmat(data_dir)
-    p_vs_l = matHG['PvsL']       # paper-field?
-    p_vs_a = matHG['PvsA']       # paper-author
-    p_vs_t = matHG['PvsT']       # paper-term, bag of words
-    p_vs_c = matHG['PvsC']       # paper-conference, labels come from that
+    p_vs_l = matHG['PvsL']  # paper-field?
+    p_vs_a = matHG['PvsA']  # paper-author
+    p_vs_t = matHG['PvsT']  # paper-term, bag of words
+    p_vs_c = matHG['PvsC']  # paper-conference, labels come from that
 
     # We assign
     # (1) KDD papers as class 0 (data mining),
@@ -72,9 +72,12 @@ def load_data(data_dir='../data/ACM.mat'):
     return
 
 
-class Heterograph:
+class HeteroGraph:
     def __init__(self, HGraphs: dict):
         self.HGraphs = HGraphs
+
+    def __getitem__(self, item):
+        return self.get_mate_path_graph(self.HGraphs.keys()[item])
 
     def get_mate_path_graph(self, mate_path):
         mate_path_adj = self.HGraphs[mate_path] * self.HGraphs[mate_path].T
@@ -83,8 +86,5 @@ class Heterograph:
         return mate_path_adj
 
 
-def HG_meta_path():
-    pass
-
-
-load_data()
+def load_data(batch_size):
+    read_data()
