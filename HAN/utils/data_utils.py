@@ -39,10 +39,14 @@ class Heterograph:
         self.HGraphs = HGraphs
 
     def get_mate_path_graph(self, mate_path):
-        return self.HGraphs[mate_path]*self.HGraphs[mate_path].T
+        mate_path_adj = self.HGraphs[mate_path] * self.HGraphs[mate_path].T
+        mask = mate_path_adj > 0
+        mate_path_adj[mask] = 1
+        return mate_path_adj
 
 
 def HG_meta_path():
     pass
+
 
 load_data()
