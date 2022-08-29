@@ -1,34 +1,15 @@
-import os
-import random
-import pickle
-import errno
-import scipy
 import scipy.io as sio
 import torch
 from torch.utils.data import DataLoader, Dataset
+from .sample_utils import Poisson
 
 
-def mkdir_p(path, log=True):
-    """Create a directory for the specified path.
-    Parameters
-    ----------
-    path : str
-        Path name
-    log : bool
-        Whether to print result for directory creation
-    """
-    try:
-        os.makedirs(path)
-        if log:
-            print('Created directory {}'.format(path))
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path) and log:
-            print('Directory {} already exists.'.format(path))
-        else:
-            raise
+def read_acm(data_dir='../data/ACM3025.mat'):
+    matHG = sio.loadmat(data_dir)
+    return [matHG['PAP'], matHG['PLP']], matHG['features'], matHG['labels']
 
 
-def read_data(data_dir='../data/ACM.mat'):
+def read_acm_row(data_dir='../data/ACM.mat'):
     """
     异构数据处理
     :param data_dir:
@@ -83,8 +64,8 @@ class HeteroGraph:
         mate_path_adj = self.HGraphs[mate_path] * self.HGraphs[mate_path].T
         mask = mate_path_adj > 0
         mate_path_adj[mask] = 1
-        return mate_path_adj
+        return mate_path_adj.toarray()
 
 
 def load_data(batch_size):
-    read_data()
+    read_acm_row()
