@@ -1,8 +1,8 @@
 import scipy.io as sio
-import scipy
+import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
-from utils.sample_utils import Poisson
+from utils.sample_utils import Poisson, RandomGenerator
 
 
 def read_acm(data_dir='../data/ACM3025.mat'):
@@ -53,7 +53,7 @@ def read_acm_row(data_dir='../data/ACM.mat'):
     p_vs_c = p_vs_c[p_selected]
 
     pc_p, pc_c = p_vs_c.nonzero()
-    labels = [0]*len(p_selected)
+    labels = np.zeros(len(p_selected))
     for conf_id, label_id in zip(conf_ids, label_ids):
         labels[pc_p[pc_c == conf_id]] = label_id
     features = p_vs_t.toarray()
@@ -86,5 +86,6 @@ def load_data(data_set='acm_raw'):
         return read_acm()
     else:
         raise ValueError('unsupported dataset!')
+
 
 load_data()
