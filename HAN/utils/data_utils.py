@@ -1,12 +1,14 @@
 import scipy.io as sio
+import scipy
 import torch
 from torch.utils.data import DataLoader, Dataset
-from .sample_utils import Poisson
+from utils.sample_utils import Poisson
 
 
 def read_acm(data_dir='../data/ACM3025.mat'):
     matHG = sio.loadmat(data_dir)
-    return [matHG['PAP'], matHG['PLP']], matHG['features'], matHG['labels']
+    return [matHG['PAP'], matHG['PLP']], matHG['feature'], matHG['label'], \
+           matHG['train_idx'], matHG['val_idx'], matHG['test_idx']
 
 
 def read_acm_row(data_dir='../data/ACM.mat'):
@@ -49,8 +51,15 @@ def read_acm_row(data_dir='../data/ACM.mat'):
     p_vs_a = p_vs_a[p_selected]
     p_vs_t = p_vs_t[p_selected]
     p_vs_c = p_vs_c[p_selected]
-    feature = p_vs_t.toarray()
-    return
+
+    pc_p, pc_c = p_vs_c.nonzero()
+    labels = [0]*len(p_selected)
+    for conf_id, label_id in zip(conf_ids, label_ids):
+        labels[pc_p[pc_c == conf_id]] = label_id
+    features = p_vs_t.toarray()
+
+    HG = HeteroGraph({'p_vs_l': p_vs_l, 'p_vs_a': p_vs_a})
+    return HG, features, labels
 
 
 class HeteroGraph:
@@ -60,6 +69,9 @@ class HeteroGraph:
     def __getitem__(self, item):
         return self.get_mate_path_graph(self.HGraphs.keys()[item])
 
+    def __len__(self):
+        return len(self.HGraphs)
+
     def get_mate_path_graph(self, mate_path):
         mate_path_adj = self.HGraphs[mate_path] * self.HGraphs[mate_path].T
         mask = mate_path_adj > 0
@@ -67,5 +79,12 @@ class HeteroGraph:
         return mate_path_adj.toarray()
 
 
-def load_data(batch_size):
-    read_acm_row()
+def load_data(data_set='acm_raw'):
+    if data_set == 'acm_raw':
+        return read_acm_row()
+    elif data_set == 'acm':
+        return read_acm()
+    else:
+        raise ValueError('unsupported dataset!')
+
+load_data()
