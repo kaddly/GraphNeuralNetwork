@@ -1,8 +1,6 @@
 import scipy.io as sio
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset
-from utils.sample_utils import Poisson, RandomGenerator
 
 
 def read_acm(data_dir='../data/ACM3025.mat'):
@@ -59,7 +57,17 @@ def read_acm_row(data_dir='../data/ACM.mat'):
     features = p_vs_t.toarray()
 
     HG = HeteroGraph({'p_vs_l': p_vs_l, 'p_vs_a': p_vs_a})
-    return HG, features, labels
+
+    # 每个类别均匀划分训练集、验证集、测试集
+    float_mask = np.zeros(len(pc_p))
+    for conf_id in conf_ids:
+        pc_c_mask = (pc_c == conf_id)
+        float_mask[pc_c_mask] = np.random.permutation(np.linspace(0, 1, pc_c_mask.sum()))
+    train_idx = np.where(float_mask <= 0.2)[0]
+    val_idx = np.where((float_mask > 0.2) & (float_mask <= 0.3))[0]
+    test_idx = np.where(float_mask > 0.3)[0]
+
+    return HG, features, labels, train_idx, val_idx, test_idx
 
 
 class HeteroGraph:
@@ -79,13 +87,25 @@ class HeteroGraph:
         return mate_path_adj.toarray()
 
 
+def get_binary_mask(total_size, indices):
+    mask = torch.zeros(total_size)
+    mask[indices] = 1
+    return mask.byte()
+
+
 def load_data(data_set='acm_raw'):
     if data_set == 'acm_raw':
-        return read_acm_row()
+        HGs, features, labels, train_idx, val_idx, test_idx = read_acm_row()
     elif data_set == 'acm':
-        return read_acm()
+        HGs, features, labels, train_idx, val_idx, test_idx = read_acm()
     else:
         raise ValueError('unsupported dataset!')
+    num_nodes = labels.shape[0]
+    train_mask = get_binary_mask(num_nodes, train_idx)
+    val_mask = get_binary_mask(num_nodes, val_idx)
+    test_mask = get_binary_mask(num_nodes, test_idx)
+    HGs_adj = [torch.tensor(hg) for hg in HGs]
+    features = torch.Tensor(features)
+    labels = torch.LongTensor(labels)
 
-
-load_data()
+    return HGs_adj, features, labels, train_idx, val_idx, test_idx, train_mask, val_mask, test_mask
