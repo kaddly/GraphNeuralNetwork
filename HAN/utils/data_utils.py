@@ -1,6 +1,7 @@
 import scipy.io as sio
 import numpy as np
 import torch
+from torch.utils.data import DataLoader
 
 
 def read_acm(data_dir='../data/ACM3025.mat'):
@@ -74,8 +75,9 @@ class HeteroGraph:
     def __init__(self, HGraphs: dict):
         self.HGraphs = HGraphs
 
-    def __getitem__(self, item):
-        return self.get_mate_path_graph(self.HGraphs.keys()[item])
+    def __iter__(self):
+        for key in self.HGraphs.keys():
+            yield self.get_mate_path_graph(key)
 
     def __len__(self):
         return len(self.HGraphs)
@@ -87,25 +89,35 @@ class HeteroGraph:
         return mate_path_adj.toarray()
 
 
-def get_binary_mask(total_size, indices):
-    mask = torch.zeros(total_size)
-    mask[indices] = 1
-    return mask.byte()
+class collect_f:
+    def __init__(self, HGs, features, labels):
+        self.HGs_adj = [torch.tensor(hg) for hg in HGs]
+        self.features = torch.Tensor(features)
+        self.labels = torch.LongTensor(labels)
+
+    def __call__(self, data):
+        idx = list(data)
+        HGs_adj = [HG_adj[idx:idx] for HG_adj in self.HGs_adj]
+        return HGs_adj, self.features[idx], self.labels[idx]
 
 
-def load_data(data_set='acm_raw'):
+def load_data(data_set='acm_raw', is_batch=False, batch_size=32):
     if data_set == 'acm_raw':
         HGs, features, labels, train_idx, val_idx, test_idx = read_acm_row()
     elif data_set == 'acm':
         HGs, features, labels, train_idx, val_idx, test_idx = read_acm()
     else:
         raise ValueError('unsupported dataset!')
-    num_nodes = labels.shape[0]
-    train_mask = get_binary_mask(num_nodes, train_idx)
-    val_mask = get_binary_mask(num_nodes, val_idx)
-    test_mask = get_binary_mask(num_nodes, test_idx)
-    HGs_adj = [torch.tensor(hg) for hg in HGs]
-    features = torch.Tensor(features)
-    labels = torch.LongTensor(labels)
+    if is_batch:
+        batchify = collect_f(HGs, features, labels)
+        train_iter = DataLoader(data_set=train_idx, batch_size=batch_size, shuffle=True, collate_fn=batchify)
+        val_iter = DataLoader(data_set=val_idx, batch_size=batch_size, collate_fn=batchify)
+        test_iter = DataLoader(data_set=test_idx, batch_size=batch_size, collate_fn=batchify)
 
-    return HGs_adj, features, labels, train_idx, val_idx, test_idx, train_mask, val_mask, test_mask
+        return train_iter, val_iter, test_iter
+
+    else:
+        HGs_adj = [torch.tensor(hg) for hg in HGs]
+        features = torch.Tensor(features)
+        labels = torch.LongTensor(labels)
+        return HGs_adj, features, labels, train_idx, val_idx, test_idx
