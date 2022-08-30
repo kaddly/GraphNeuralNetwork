@@ -114,7 +114,7 @@ def load_data(data_set='acm_raw', is_batch=False, batch_size=32):
         val_iter = DataLoader(data_set=val_idx, batch_size=batch_size, collate_fn=batchify)
         test_iter = DataLoader(data_set=test_idx, batch_size=batch_size, collate_fn=batchify)
 
-        return train_iter, val_iter, test_iter
+        return batchify.HGs_adj, train_iter, val_iter, test_iter
 
     else:
         HGs_adj = [torch.tensor(hg) for hg in HGs]
