@@ -108,8 +108,8 @@ def train(net, data_iter, lr, num_epochs, devices, is_current_train=True):
     if not os.path.exists(parameter_path):
         os.mkdir(parameter_path)
 
-    if is_current_train and os.path.exists('./saved_dict/HAN_batch/HAN.ckpt'):
-        net.load_state_dict(torch.load('./saved_dict/HAN_batch/HAN.ckpt'), False)
+    if is_current_train and os.path.exists('./saved_dict/HAN/HAN.ckpt'):
+        net.load_state_dict(torch.load('./saved_dict/HAN/HAN.ckpt'), False)
     else:
         net.apply(init_weights)
 
