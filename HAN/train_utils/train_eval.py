@@ -122,7 +122,7 @@ def train(net, data_iter, lr, num_epochs, devices, is_current_train=True):
     dev_best_loss = float('inf')
     last_improve = 0  # 记录上次验证集loss下降的batch数
     metric = Accumulator(2)
-    HGs_adj, features, labels, train_idx, val_idx, test_idx = [
+    HGs_adj, features, labels, train_idx, val_idx = [
         x.to(devices[0]) if not isinstance(x, (list, tuple)) else [adj.to(devices[0]) for adj in x] for x in data_iter]
     for epoch in range(num_epochs):
         net.train()
