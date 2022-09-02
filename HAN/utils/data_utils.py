@@ -4,13 +4,13 @@ import torch
 from torch.utils.data import DataLoader
 
 
-def read_acm(data_dir='../data/ACM3025.mat'):
+def read_acm(data_dir='./data/ACM3025.mat'):
     matHG = sio.loadmat(data_dir)
     return [matHG['PAP'], matHG['PLP']], matHG['feature'], matHG['label'], \
            matHG['train_idx'], matHG['val_idx'], matHG['test_idx']
 
 
-def read_acm_row(data_dir='../data/ACM.mat'):
+def read_acm_row(data_dir='./data/ACM.mat'):
     """
     异构数据处理
     :param data_dir:
@@ -97,7 +97,7 @@ class collect_f:
 
     def __call__(self, data):
         idx = list(data)
-        HGs_adj = [HG_adj[idx:idx] for HG_adj in self.HGs_adj]
+        HGs_adj = [HG_adj[idx][:, idx] for HG_adj in self.HGs_adj]
         return HGs_adj, self.features[idx], self.labels[idx]
 
 
@@ -110,14 +110,14 @@ def load_data(data_set='acm_raw', is_batch=False, batch_size=32):
         raise ValueError('unsupported dataset!')
     if is_batch:
         batchify = collect_f(HGs, features, labels)
-        train_iter = DataLoader(data_set=train_idx, batch_size=batch_size, shuffle=True, collate_fn=batchify)
-        val_iter = DataLoader(data_set=val_idx, batch_size=batch_size, collate_fn=batchify)
-        test_iter = DataLoader(data_set=test_idx, batch_size=batch_size, collate_fn=batchify)
+        train_iter = DataLoader(test_idx, batch_size=batch_size, shuffle=True, collate_fn=batchify)
+        val_iter = DataLoader(val_idx, batch_size=batch_size, collate_fn=batchify)
+        test_iter = DataLoader(test_idx, batch_size=batch_size, collate_fn=batchify)
 
-        return batchify.HGs_adj, train_iter, val_iter, test_iter
+        return batchify.HGs_adj, train_iter, val_iter, test_iter, len(features[0])
 
     else:
         HGs_adj = [torch.tensor(hg) for hg in HGs]
         features = torch.Tensor(features)
         labels = torch.LongTensor(labels)
-        return HGs_adj, features, labels, train_idx, val_idx, test_idx
+        return HGs_adj, features, labels, torch.tensor(train_idx), torch.tensor(val_idx), torch.tensor(test_idx)

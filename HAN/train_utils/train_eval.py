@@ -127,7 +127,7 @@ def train(net, data_iter, lr, num_epochs, devices, is_current_train=True):
     for epoch in range(num_epochs):
         net.train()
         optimizer.zero_grad()
-        output = net(features, HGs_adj)
+        output = net(HGs_adj, features)
         train_loss = loss(output[train_idx], labels[train_idx])
         train_loss.backward()
         optimizer.step()

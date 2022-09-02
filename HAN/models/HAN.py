@@ -16,8 +16,8 @@ class HANLayer(nn.Module):
     def forward(self, gs, h):
         semantic_embeddings = []
 
-        for i, g in enumerate(gs):
-            semantic_embeddings.append(self.gat_layers[i](g, h).flatten(1))
+        for g, gat_layer in zip(gs, self.gat_layers):
+            semantic_embeddings.append(gat_layer(h, g).flatten(1))
         semantic_embeddings = torch.stack(semantic_embeddings, dim=1)                  # (N, M, D * K)
 
         return self.semantic_attention(semantic_embeddings)
