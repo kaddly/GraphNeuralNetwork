@@ -155,5 +155,40 @@ def train(net, data_iter, lr, num_epochs, devices, is_current_train=True):
             break
 
 
-def test():
-    pass
+def test(net, data_iter, is_batch, device):
+
+    if is_batch:
+        if not os.path.exists('./saved_dict/HAN_batch/HAN_batch.ckpt'):
+            print('please train before!')
+            return
+        net.load_state_dict(torch.load('./saved_dict/GAT/GAT.ckpt'), False)
+        net.to(device)
+        net.eval()
+        with torch.no_grad():
+            val_acc, val_loss = [], []
+            for batch in data_iter:
+                HG_adj, features, labels = [
+                    x.to(device) if not isinstance(x, (list, tuple)) else [adj.to(device) for adj in x] for x in
+                    batch]
+                y_hat = net(HG_adj, features)
+                val_loss.append(F.cross_entropy(y_hat, labels))
+                val_acc.append(accuracy(y_hat, labels))
+        print("Test set results:",
+              "loss= {:.4f}".format(sum(val_acc) / len(val_acc)),
+              "accuracy= {:.4f}".format(sum(val_loss) / len(val_loss)))
+    else:
+        if not os.path.exists('./saved_dict/HAN/HAN.ckpt'):
+            print('please train before!')
+            return
+        net.load_state_dict(torch.load('./saved_dict/HAN/HAN.ckpt'), False)
+        net.to(device)
+        net.eval()
+        HGs_adj, features, labels, test_idx = [
+            x.to(device) if not isinstance(x, (list, tuple)) else [adj.to(device) for adj in x] for x in data_iter]
+        with torch.no_grad():
+            output = net(features, HGs_adj)
+            loss_test = F.cross_entropy(output[test_idx], labels[test_idx])
+            acc_test = accuracy(output[test_idx], labels[test_idx])
+        print("Test set results:",
+              "loss= {:.4f}".format(loss_test.item()),
+              "accuracy= {:.4f}".format(acc_test))
