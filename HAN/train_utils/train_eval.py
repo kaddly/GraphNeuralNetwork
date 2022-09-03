@@ -161,7 +161,7 @@ def test(net, data_iter, is_batch, device):
         if not os.path.exists('./saved_dict/HAN_batch/HAN_batch.ckpt'):
             print('please train before!')
             return
-        net.load_state_dict(torch.load('./saved_dict/GAT/GAT.ckpt'), False)
+        net.load_state_dict(torch.load('./saved_dict/HAN_batch/HAN_batch.ckpt'), False)
         net.to(device)
         net.eval()
         with torch.no_grad():
@@ -174,8 +174,8 @@ def test(net, data_iter, is_batch, device):
                 val_loss.append(F.cross_entropy(y_hat, labels))
                 val_acc.append(accuracy(y_hat, labels))
         print("Test set results:",
-              "loss= {:.4f}".format(sum(val_acc) / len(val_acc)),
-              "accuracy= {:.4f}".format(sum(val_loss) / len(val_loss)))
+              "loss= {:>5.3f}".format(sum(val_loss) / len(val_loss)),
+              "accuracy= {:>6.2%}".format(sum(val_acc) / len(val_acc)))
     else:
         if not os.path.exists('./saved_dict/HAN/HAN.ckpt'):
             print('please train before!')
@@ -190,5 +190,5 @@ def test(net, data_iter, is_batch, device):
             loss_test = F.cross_entropy(output[test_idx], labels[test_idx])
             acc_test = accuracy(output[test_idx], labels[test_idx])
         print("Test set results:",
-              "loss= {:.4f}".format(loss_test.item()),
-              "accuracy= {:.4f}".format(acc_test))
+              "loss= {:>5.3f}".format(loss_test.item()),
+              "accuracy= {:>6.2%}".format(acc_test))
