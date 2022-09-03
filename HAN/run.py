@@ -13,9 +13,9 @@ if __name__ == '__main__':
         HGs_adj, train_iter, val_iter, test_iter, features_size = load_data(data_set='acm_raw', is_batch=is_batch_train)
         net = HANModel(len(HGs_adj), features_size, num_hidden, out_size=3, num_heads=nheads, dropout=dropout)
         train_batch(net, train_iter, val_iter, lr, num_epochs, devices)
-        test(net, test_iter, is_batch_train)
+        test(net, test_iter, is_batch_train, devices[0])
     else:
         HGs_adj, features, labels, train_idx, val_idx, test_idx = load_data(data_set='acm_raw', is_batch=is_batch_train)
         net = HANModel(len(HGs_adj), features.shape[-1], num_hidden, out_size=3, num_heads=nheads, dropout=dropout)
         train(net, [HGs_adj, features, labels, train_idx, val_idx], lr, num_epochs, devices)
-        test(net, [HGs_adj, features, labels, test_idx], is_batch_train)
+        test(net, [HGs_adj, features, labels, test_idx], is_batch_train, devices[0])
