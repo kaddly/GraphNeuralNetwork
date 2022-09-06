@@ -3,9 +3,9 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class CTConv(nn.Module):
+class GTConv(nn.Module):
     def __init__(self, in_channels, out_channels, **kwargs):
-        super(CTConv, self).__init__(**kwargs)
+        super(GTConv, self).__init__(**kwargs)
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.weight = nn.Parameter(torch.Tensor(out_channels, in_channels, 1, 1))
