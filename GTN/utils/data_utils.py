@@ -12,6 +12,7 @@ def read_acm(data_dir='../data/acm.mat'):
     paper_conf = mat_file['PvsC'].nonzero()[1]
     # DataBase
     paper_db_idx = np.where(np.isin(paper_conf, [1, 13]))[0]
+    paper_db_idx = np.sort(np.random.choice(paper_db_idx, 994, replace=False))
     # Data Mining
     paper_dm_idx = np.where(np.isin(paper_conf, [0]))[0]
     # Wireless Communication
