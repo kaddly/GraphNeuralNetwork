@@ -8,7 +8,15 @@ from torch.utils.data import DataLoader, Dataset
 
 
 def read_acm(data_dir='../data/acm.mat'):
-    mat_file = sio.loadmat(data_dir)
+    return sio.loadmat(data_dir)
+
+
+def process_paper_target(mat_file):
+    """
+    构建论文idx与对应的标签
+    :param mat_file:
+    :return:
+    """
     paper_conf = mat_file['PvsC'].nonzero()[1]
     # DataBase
     paper_db_idx = np.where(np.isin(paper_conf, [1, 13]))[0]
@@ -18,7 +26,6 @@ def read_acm(data_dir='../data/acm.mat'):
     # Wireless Communication
     paper_wc_idx = np.where(np.isin(paper_conf, [9, 10]))[0]
     paper_idx = np.sort(list(paper_db_idx) + list(paper_dm_idx) + list(paper_wc_idx))
-
     # 处理labels
     paper_target = []
     for idx in paper_idx:
@@ -29,8 +36,16 @@ def read_acm(data_dir='../data/acm.mat'):
         else:
             paper_target.append(2)
     paper_target = np.array(paper_target)
+    return paper_idx, paper_target
 
-    # 处理edges
+
+def process_edge(mat_file, paper_idx):
+    """
+    处理邻接矩阵
+    :param mat_file:
+    :param paper_idx:
+    :return:
+    """
     # 处理作者
     authors = mat_file['PvsA'][paper_idx].nonzero()[1]
     author_dic = {}
@@ -62,8 +77,10 @@ def read_acm(data_dir='../data/acm.mat'):
     A_ps = csr_matrix((data, (papers, re_subjects)), shape=(node_num, node_num))
     A_sp = A_ps.transpose()
 
-    edges = [A_pa, A_ap, A_ps, A_sp]
-
-    # Node feature
+    return [A_pa, A_ap, A_ps, A_sp]
 
 
+def load_acm():
+    mat_file = read_acm()
+    paper_idx, paper_target = process_paper_target(mat_file)
+    edges = process_edge(mat_file, paper_idx)

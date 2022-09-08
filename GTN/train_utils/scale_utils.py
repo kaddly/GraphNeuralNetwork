@@ -132,8 +132,8 @@ def recall(pred, target, num_classes):
     return out
 
 
-def f1_score(pred, target, num_classes):
-    r"""Computes the :math:`F_1` score:
+def f_beta_score(pred, target, num_classes, beta=1):
+    r"""Computes the :math:`F_beta` score:
     :math:`2 \cdot \frac{\mathrm{precision} \cdot \mathrm{recall}}
     {\mathrm{precision}+\mathrm{recall}}`.
 
@@ -149,7 +149,7 @@ def f1_score(pred, target, num_classes):
     prec = precision(pred, target, num_classes)
     rec = recall(pred, target, num_classes)
 
-    score = 2 * (prec * rec) / (prec + rec)
+    score = (1+beta**2)/(beta**2/rec+1/prec)
     score[torch.isnan(score)] = 0
 
     return score
