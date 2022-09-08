@@ -101,12 +101,12 @@ def process_edge_feature(mat_file, paper_idx):
     papers = mat_file['PvsT'][paper_idx].nonzero()[0]
     data = np.ones_like(papers)
     A_pt_tmp = csr_matrix((data, (papers, re_terms)), shape=(tmp_num_node, tmp_num_node))
-    paper_feat = np.array(A_pt_tmp[:len(paper_idx), -len(term_dic):].toarray() > 0, dtype=np.int)
+    paper_feat = np.array(A_pt_tmp[:len(paper_idx), -len(term_dic):].toarray() > 0, dtype=np.int32)
     author_feat = np.array(A_pa_tmp.transpose().dot(A_pt_tmp)[len(paper_idx):len(paper_idx) + len(author_dic),
-                           -len(term_dic):].toarray() > 0, dtype=np.int)
+                           -len(term_dic):].toarray() > 0, dtype=np.int32)
     subject_feat = np.array(A_ps_tmp.transpose().dot(A_pt_tmp)[
                             len(paper_idx) + len(author_dic):len(paper_idx) + len(author_dic) + len(subject_dic),
-                            -len(term_dic):].toarray() > 0, dtype=np.int)
+                            -len(term_dic):].toarray() > 0, dtype=np.int32)
     node_feature = np.concatenate((paper_feat, author_feat, subject_feat))
     return [A_pa, A_ap, A_ps, A_sp], node_feature
 
@@ -130,12 +130,22 @@ def train_test_split(paper_target):
     return labels
 
 
-def load_acm():
-    mat_file = read_acm()
-    paper_idx, paper_target = process_paper_target(mat_file)
-    edges, node_feature = process_edge_feature(mat_file, paper_idx)
-    labels = train_test_split(paper_target)
-    return edges, node_feature, labels
+def load_acm(is_batch_train=False, batch_size=32):
+    train_process_path = os.path.join('../data', 'train_process')
+    if os.path.exists(os.path.join(train_process_path, 'train.pkl')):
+        with open(os.path.join(train_process_path, 'train.pkl'), 'rb') as f:
+            paper_idx, paper_target, edges, node_feature = pickle.load(f)
+    else:
+        mat_file = read_acm()
+        paper_idx, paper_target = process_paper_target(mat_file)
+        edges, node_feature = process_edge_feature(mat_file, paper_idx)
+        with open(os.path.join(train_process_path, 'train.pkl'), 'wb') as f:
+            pickle.dump((paper_idx, paper_target, edges, node_feature), f)
+    if is_batch_train:
+        pass
+    else:
+        labels = train_test_split(paper_target)
+        return edges, node_feature, labels
 
 
 load_acm()
