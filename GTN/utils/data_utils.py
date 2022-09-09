@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 
-def read_acm(data_dir='../data/acm.mat'):
+def read_acm(data_dir='../data/ACM.mat'):
     """
     读取mat数据
     :param data_dir:
@@ -92,15 +92,19 @@ def process_edge_feature(mat_file, paper_idx):
     re_terms = np.array(re_terms)
     # tmp
     tmp_num_node = node_num + len(term_dic)
+
     papers = mat_file['PvsA'][paper_idx].nonzero()[0]
     data = np.ones_like(papers)
     A_pa_tmp = csr_matrix((data, (papers, re_authors)), shape=(tmp_num_node, tmp_num_node))
+
     papers = mat_file['PvsL'][paper_idx].nonzero()[0]
     data = np.ones_like(papers)
     A_ps_tmp = csr_matrix((data, (papers, re_subjects)), shape=(tmp_num_node, tmp_num_node))
+
     papers = mat_file['PvsT'][paper_idx].nonzero()[0]
     data = np.ones_like(papers)
     A_pt_tmp = csr_matrix((data, (papers, re_terms)), shape=(tmp_num_node, tmp_num_node))
+
     paper_feat = np.array(A_pt_tmp[:len(paper_idx), -len(term_dic):].toarray() > 0, dtype=np.int32)
     author_feat = np.array(A_pa_tmp.transpose().dot(A_pt_tmp)[len(paper_idx):len(paper_idx) + len(author_dic),
                            -len(term_dic):].toarray() > 0, dtype=np.int32)
@@ -130,13 +134,13 @@ def train_test_split(paper_target):
     return labels
 
 
-def load_acm(is_batch_train=False, batch_size=32):
-    train_process_path = os.path.join('../data', 'train_process')
+def load_acm(data_root='../data', is_batch_train=False, batch_size=32):
+    train_process_path = os.path.join(data_root, 'train_process')
     if os.path.exists(os.path.join(train_process_path, 'train.pkl')):
         with open(os.path.join(train_process_path, 'train.pkl'), 'rb') as f:
             paper_idx, paper_target, edges, node_feature = pickle.load(f)
     else:
-        mat_file = read_acm()
+        mat_file = read_acm(os.path.join(data_root, 'ACM.mat'))
         paper_idx, paper_target = process_paper_target(mat_file)
         edges, node_feature = process_edge_feature(mat_file, paper_idx)
         with open(os.path.join(train_process_path, 'train.pkl'), 'wb') as f:
