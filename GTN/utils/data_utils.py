@@ -150,6 +150,3 @@ def load_acm(data_root='../data', is_batch_train=False, batch_size=32):
     else:
         labels = train_test_split(paper_target)
         return edges, node_feature, labels
-
-
-load_acm()
