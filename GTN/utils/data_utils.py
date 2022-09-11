@@ -134,7 +134,7 @@ def train_test_split(paper_target):
     return labels
 
 
-def load_acm(data_root='../data', is_batch_train=False, batch_size=32):
+def load_acm(data_root='../data'):
     train_process_path = os.path.join(data_root, 'train_process')
     if os.path.exists(os.path.join(train_process_path, 'train.pkl')):
         with open(os.path.join(train_process_path, 'train.pkl'), 'rb') as f:
@@ -145,8 +145,5 @@ def load_acm(data_root='../data', is_batch_train=False, batch_size=32):
         edges, node_feature = process_edge_feature(mat_file, paper_idx)
         with open(os.path.join(train_process_path, 'train.pkl'), 'wb') as f:
             pickle.dump((paper_idx, paper_target, edges, node_feature), f)
-    if is_batch_train:
-        pass
-    else:
-        labels = train_test_split(paper_target)
-        return edges, node_feature, labels
+    labels = train_test_split(paper_target)
+    return edges, node_feature, labels
