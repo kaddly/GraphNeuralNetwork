@@ -9,9 +9,9 @@ from .optimizer_utils import create_lr_scheduler
 from .distributed_utils import Accumulator
 
 
-def train():
+def train(args):
     pass
 
 
-def test():
+def test(args):
     pass
