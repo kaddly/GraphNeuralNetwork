@@ -1,4 +1,6 @@
 from utils import load_acm
+from models import GTN_Model
+from train_utils import train
 
 
 def parse_args():

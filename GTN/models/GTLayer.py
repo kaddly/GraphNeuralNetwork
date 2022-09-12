@@ -11,14 +11,14 @@ class GTLayer(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels  # 1x1卷积的channel数量
         self.first = first
-        if self.first == True:
+        if self.first:
             self.conv1 = GTConv(in_channels, out_channels)  # W1
             self.conv2 = GTConv(in_channels, out_channels)  # W2
         else:
             self.conv1 = GTConv(in_channels, out_channels)
 
     def forward(self, A, H_=None):  # A:[1,edgeType,N,N]
-        if self.first == True:
+        if self.first:
             a = self.conv1(A)  # GTConv=>[2, N, N] #Q1
             b = self.conv2(A)  # Q2
             # *** 作了第一次矩阵相乘，得到A1
