@@ -10,7 +10,7 @@ def norm(H, add=False):
         H = H * ((torch.eye(H.shape[0]) == 0).type(torch.FloatTensor))  # 建立一个对角阵; 除了自身节点，对应位置相乘。Degree(排除本身)
     else:
         H = H * ((torch.eye(H.shape[0]) == 0).type(torch.FloatTensor)) + torch.eye(H.shape[0]).type(torch.FloatTensor)
-    deg = torch.sum(H, dim=1)  # 按行求和, 即每个节点的dgree的和
+    deg = torch.sum(H, dim=1)  # 按行求和, 即每个节点的degree的和
     deg_inv = deg.pow(-1)  # deg-1 归一化操作
     deg_inv[deg_inv == float('inf')] = 0
     deg_inv = deg_inv * torch.eye(H.shape[0]).type(torch.FloatTensor)  # 转换成n*n的矩阵
@@ -20,7 +20,7 @@ def norm(H, add=False):
 
 
 class GTN_Model(nn.Module):
-    def __init__(self, num_edge, num_channels, w_in, w_out, num_class, num_layers, norm, **kwargs):
+    def __init__(self, num_edge, num_channels, w_in, w_out, num_class, num_layers, is_norm, **kwargs):
         super(GTN_Model, self).__init__(**kwargs)
         self.num_edge = num_edge
         self.num_channels = num_channels
@@ -28,7 +28,7 @@ class GTN_Model(nn.Module):
         self.w_out = w_out
         self.num_class = num_class
         self.num_layers = num_layers
-        self.is_norm = norm
+        self.is_norm = is_norm
         layers = []
         for i in range(num_layers):  # layers多个GTLayer组成的; 多头channels
             if i == 0:
@@ -59,7 +59,7 @@ class GTN_Model(nn.Module):
                 H_ = torch.cat((H_, norm(H[i, :, :]).unsqueeze(0)), dim=0)  # Q2
         return H_
 
-    def forward(self, A, X, target_x, target):
+    def forward(self, A, X, target_x):
         A = A.unsqueeze(0).permute(0, 3, 1, 2)  # A.unsqueeze(0)=[1,N,N,edgeType]=>[1,edgeType,N,N]; 卷积输出的channel数量
         Ws = []
         for i in range(self.num_layers):  # 两层GTLayer:{edgeType}
@@ -84,5 +84,4 @@ class GTN_Model(nn.Module):
         X_ = self.linear1(X_)
         X_ = F.relu(X_)
         y = self.linear2(X_[target_x])
-        loss = self.loss(y, target)
-        return loss, y, Ws
+        return y, Ws

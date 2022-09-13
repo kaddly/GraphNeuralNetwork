@@ -122,16 +122,9 @@ def train_test_split(paper_target):
     train_valid_DM = list(np.random.choice(np.where(paper_target == 2)[0], 300, replace=False))
 
     train_idx = np.array(train_valid_DB[:200] + train_valid_WC[:200] + train_valid_DM[:200])
-    train_target = paper_target[train_idx]
-    train_label = np.vstack((train_idx, train_target)).transpose()
     valid_idx = np.array(train_valid_DB[200:] + train_valid_WC[200:] + train_valid_DM[200:])
-    valid_target = paper_target[valid_idx]
-    valid_label = np.vstack((valid_idx, valid_target)).transpose()
     test_idx = np.array(list((set(np.arange(paper_target.shape[0])) - set(train_idx)) - set(valid_idx)))
-    test_target = paper_target[test_idx]
-    test_label = np.vstack((test_idx, test_target)).transpose()
-    labels = [train_label, valid_label, test_label]
-    return labels
+    return train_idx, valid_idx, test_idx
 
 
 def load_acm(data_root='../data'):
@@ -145,5 +138,14 @@ def load_acm(data_root='../data'):
         edges, node_feature = process_edge_feature(mat_file, paper_idx)
         with open(os.path.join(train_process_path, 'train.pkl'), 'wb') as f:
             pickle.dump((paper_idx, paper_target, edges, node_feature), f)
-    labels = train_test_split(paper_target)
-    return edges, node_feature, labels
+
+    train_idx, valid_idx, test_idx = train_test_split(paper_target)
+    num_nodes = edges[0].shape[0]
+    for i, edge in enumerate(edges):
+        if i == 0:
+            A = torch.from_numpy(edge.todense()).type(torch.FloatTensor).unsqueeze(-1)  # 添加末尾一位
+        else:
+            A = torch.cat([A, torch.from_numpy(edge.todense()).type(torch.FloatTensor).unsqueeze(-1)], dim=-1)
+    A = torch.cat([A, torch.eye(num_nodes).type(torch.FloatTensor).unsqueeze(-1)], dim=-1)  # 添加一个单位对角阵
+    return A, torch.from_numpy(node_feature).type(torch.FloatTensor), torch.from_numpy(paper_target).type(
+        torch.LongTensor), torch.tensor(train_idx), torch.tensor(valid_idx), torch.tensor(test_idx)

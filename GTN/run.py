@@ -1,3 +1,4 @@
+import torch
 from utils import load_acm
 from models import GTN_Model
 from train_utils import train
@@ -22,6 +23,8 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    edges, node_feature, labels = load_acm(args.data_path)
-
-
+    A, node_feature, labels, train_idx, val_idx, test_idx = load_acm(args.data_path)
+    num_classes = torch.max(labels).item() + 1
+    net = GTN_Model(A.shape[-1], args.num_channels, node_feature.shape[1], args.num_hidden, num_classes,
+                    args.num_layers, args.norm)
+    train(net, args)
