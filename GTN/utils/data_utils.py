@@ -4,7 +4,6 @@ import scipy.io as sio
 from scipy.sparse import csr_matrix
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset
 
 
 def read_acm(data_dir='../data/ACM.mat'):

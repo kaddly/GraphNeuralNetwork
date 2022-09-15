@@ -19,8 +19,8 @@ def train(net, data_iter, args):
     if not os.path.exists(parameter_path):
         os.mkdir(parameter_path)
 
-    if args.is_current_train and os.path.exists(os.path.join(parameter_path, 'HAN.ckpt')):
-        net.load_state_dict(torch.load(os.path.join(parameter_path, 'HAN.ckpt')), False)
+    if args.is_current_train and os.path.exists(os.path.join(parameter_path, args.model + '.ckpt')):
+        net.load_state_dict(torch.load(os.path.join(parameter_path, args.model + '.ckpt')), False)
     else:
         net.apply(init_weights)
 
@@ -35,7 +35,7 @@ def train(net, data_iter, args):
     else:
         optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if args.scheduler_lr:
-        lr_scheduler = create_lr_scheduler(optimizer, 1, args.epoch)
+        lr_scheduler = create_lr_scheduler(optimizer, 1, args.num_epoch)
 
     loss = nn.CrossEntropyLoss()
     start_time = time.time()
@@ -44,7 +44,7 @@ def train(net, data_iter, args):
     metric = Accumulator(3)
     A, node_feature, labels, train_idx, val_idx = [x.to(device) for x in data_iter]
     num_classes = torch.max(labels).item() + 1
-    for epoch in range(args.epoch):
+    for epoch in range(args.num_epoch):
         net.train()
         optimizer.zero_grad()
         y_hat, ws = net(A, node_feature, train_idx)
@@ -70,13 +70,36 @@ def train(net, data_iter, args):
                 improve = ''
             time_dif = timedelta(seconds=int(round(time.time() - start_time)))
             msg = 'Epoch [{0}/{1}]:  train_loss: {2:>5.3f},  train_acc: {3:>6.2%}, train_f1_score: {4:>5.3f},  train_lr: {5:>5.3f},  val_loss: {6:>5.3f}, val_acc: {7:>6.2%}, val_f1_score: {8:>5.3f}, Time: {9} {10}'
-            print(msg.format(epoch + 1, args.epoch, metric[0] / epoch, metric[1] / epoch, metric[2] / epoch, lr_current,
+            print(msg.format(epoch + 1, args.num_epoch, metric[0] / epoch, metric[1] / epoch, metric[2] / epoch,
+                             lr_current,
                              val_loss.item(), accuracy(output, labels[val_idx]),
                              f_beta_score(output, labels[val_idx], num_classes), time_dif, improve))
-        if epoch - last_improve > 5000:
+        if epoch - last_improve > args.Max_auto_stop_epoch:
             print("No optimization for a long time, auto-stopping...")
             break
 
 
-def test(net, args):
-    pass
+def test(net, data_iter, args):
+    parameter_path = os.path.join(args.model_dict_path, args.model)
+    device = torch.device(args.device) if torch.cuda.is_available() else torch.device('cpu')
+    if not os.path.exists(os.path.join(parameter_path, args.model + '.ckpt')):
+        print('please train before!')
+        return
+    net.load_state_dict(torch.load(os.path.join(parameter_path, args.model + '.ckpt')), False)
+    net.to(device)
+    net.eval()
+    A, node_feature, labels, test_idx = [x.to(device) for x in data_iter]
+    num_classes = torch.max(labels).item() + 1
+    with torch.no_grad():
+        output = net(A, node_feature, test_idx)
+        loss = F.cross_entropy(output, labels[test_idx])
+        acc = accuracy(output, labels[test_idx])
+        f1_score = f_beta_score(output, labels[test_idx], num_classes)
+        r = recall(output, labels[test_idx], num_classes)
+        pre = precision(output, labels[test_idx], num_classes)
+    print("Test set results:",
+          "loss= {:>5.3f}".format(loss.item()),
+          "accuracy= {:>6.2%}".format(acc),
+          "f1 score= {:>5.3f}".format(f1_score),
+          "recall= {:>5.3f}".format(r),
+          "precision= {:>5.3f}".format(pre))
