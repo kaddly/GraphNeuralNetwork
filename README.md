@@ -24,8 +24,8 @@
 - [GCN](./GCN)
 - [GraphSAGE](./GraphSAGE)
 - [GAT](./GAT)
-- HAN
-- GTN
+- [HAN](./HAN)
+- [GTN](./GTN)
 
 
 
