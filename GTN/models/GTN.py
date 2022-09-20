@@ -7,13 +7,13 @@ from models.GTLayer import GTLayer
 def norm(H, add=False):
     H = H.t()  # t
     if not add:
-        H = H * ((torch.eye(H.shape[0]) == 0).type(torch.FloatTensor))  # 建立一个对角阵; 除了自身节点，对应位置相乘。Degree(排除本身)
+        H = H * ((torch.eye(H.shape[0]) == 0).type(torch.FloatTensor).to(H.device))  # 建立一个对角阵; 除了自身节点，对应位置相乘。Degree(排除本身)
     else:
-        H = H * ((torch.eye(H.shape[0]) == 0).type(torch.FloatTensor)) + torch.eye(H.shape[0]).type(torch.FloatTensor)
+        H = H * ((torch.eye(H.shape[0]) == 0).type(torch.FloatTensor).to(H.device)) + torch.eye(H.shape[0]).type(torch.FloatTensor).to(H.device)
     deg = torch.sum(H, dim=1)  # 按行求和, 即每个节点的degree的和
     deg_inv = deg.pow(-1)  # deg-1 归一化操作
     deg_inv[deg_inv == float('inf')] = 0
-    deg_inv = deg_inv * torch.eye(H.shape[0]).type(torch.FloatTensor)  # 转换成n*n的矩阵
+    deg_inv = deg_inv * torch.eye(H.shape[0]).type(torch.FloatTensor).to(deg_inv.device)  # 转换成n*n的矩阵
     H = torch.mm(deg_inv, H)  # 矩阵内积
     H = H.t()
     return H
