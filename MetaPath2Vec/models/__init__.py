@@ -1,0 +1,1 @@
+from .SkipGram import SkipGramModel

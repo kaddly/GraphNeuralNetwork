@@ -88,4 +88,4 @@ def data_procession(data_dir=os.path.join('./', 'data')):
 
 
 if __name__ == '__main__':
-    data_procession()
+    data_procession(os.path.join('../', 'data'))
