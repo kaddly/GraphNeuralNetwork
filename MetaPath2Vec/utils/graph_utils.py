@@ -24,8 +24,28 @@ class HeteroGraph(object):
         self.node_features = node_frames
         self.edge_features = edge_frames
 
-    def _relation_to_adj(self):
-        pass
+    def _node_map_index(self):
+        node_type_index = {}
+        node_types = self.node_types if isinstance(self.node_types[0], str) else [node for node_type in self.node_types for node in node_type]
+        relations = self.graph_idx if isinstance(self.node_types[0], str) else [relation for relations in self.graph_idx for relation in relations]
+        for i, node_type in node_types:
+            src_set = set(relations[i])
+
+    def relation_to_adj(self):
+        HG_adj = {}
+        if not isinstance(self.node_types[0], str):
+            for r, nodes in zip(self.graph_idx, self.node_types):
+                self._single_relation_to_adj(r, nodes)
+        else:
+            self._single_relation_to_adj(self.graph_idx, self.node_types)
+
+    def _single_relation_to_adj(self, relation):
+        src_len = set(relation[0])
+        dst_len = set(relation[1])
+        relation_matrix = [[0 for _ in range(len(src_len))] for _ in range(len(dst_len))]
+        for (x_index, y_index) in relation:
+            relation_matrix[x_index][y_index] = 1
+        return relation_matrix
 
     def __repr__(self):
         pass
