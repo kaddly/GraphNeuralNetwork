@@ -24,6 +24,7 @@ class HeteroGraph(object):
         self.node_features = node_frames
         self.edge_features = edge_frames
         self.node_index_map = self._node_map_index()
+        self.HG_adj = self.relation_to_adj()
 
     def _node_map_index(self):
         node_type_index = {}
@@ -48,6 +49,7 @@ class HeteroGraph(object):
         else:
             adj = self._single_relation_to_adj(self.graph_idx, self.edge_types)
             HG_adj[self.edge_types[0]+'->'+self.edge_types[1]] = adj
+        return HG_adj
 
     def _single_relation_to_adj(self, relation, edge_types):
         src = self.node_index_map[edge_types[0]]
@@ -61,9 +63,7 @@ class HeteroGraph(object):
         ret = ('Graph(num_nodes={node},\n'
                '      num_edges={edge},\n'
                '      metagraph={meta})')
-        nnode_dict = {self.ntypes[i]: self._graph.number_of_nodes(i)
-                      for i in range(len(self.ntypes))}
-        nedge_dict = {self.canonical_etypes[i]: self._graph.number_of_edges(i)
-                      for i in range(len(self.etypes))}
+        nnode_dict = {node: len(index) for node, index in self.node_index_map}
+        nedge_dict = {edge: len(adj) for edge, adj in self.HG_adj}
         meta = str(self.metagraph().edges(keys=True))
         return ret.format(node=nnode_dict, edge=nedge_dict, meta=meta)
