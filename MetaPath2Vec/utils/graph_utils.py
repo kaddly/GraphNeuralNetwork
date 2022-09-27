@@ -4,14 +4,14 @@ import pandas as pd
 
 def procession_graph(edges: pd.DataFrame, sample_num=10000):
     edges = edges.sample(sample_num)
-    users = set()
-    items = set()
-    for row in edges.iterrows():
-        users.add(row['user_id'])
-        items.add(row['sku_id'])
+    users = set(edges['user_id'])
+    items = set(edges['sku_id'])
     user_to_idx = {x: i for i, x in enumerate(users)}  # user编号
     item_to_idx = {x: i for i, x in enumerate(items)}  # item编号
-    return list(users), user_to_idx, list(items), item_to_idx
+    user_item_src = [user_to_idx.get(user_id) for user_id in edges['user_id']]
+    user_item_dst = [item_to_idx.get(item_id) for item_id in edges['sku_id']]
+    HG = HeteroGraph([user_item_src, user_item_dst], edge_types=['user', 'item'], meta_path=['user', 'item', 'user'])
+    return HG, list(users), user_to_idx, list(items), item_to_idx
 
 
 class HeteroGraph(object):
@@ -33,7 +33,7 @@ class HeteroGraph(object):
                                                                                   for node in node_type]
         relations = self.graph_idx if isinstance(self.edge_types[0], str) else [relation for relations in self.graph_idx
                                                                                 for relation in relations]
-        for i, node_type in node_types:
+        for i, node_type in enumerate(node_types):
             if node_type not in node_type_index:
                 node_type_index[node_type] = set(relations[i])
             else:
@@ -59,13 +59,13 @@ class HeteroGraph(object):
     def _single_relation_to_adj(self, relation, edge_types):
         src = self.node_index_map[edge_types[0]]
         dst = self.node_index_map[edge_types[1]]
-        relation_matrix = [[0 for _ in range(len(src))] for _ in range(len(dst))]
-        for (x_index, y_index) in relation:
+        relation_matrix = [[0 for _ in range(len(dst))] for _ in range(len(src))]
+        for x_index, y_index in zip(*relation):
             relation_matrix[x_index][y_index] = 1
         return relation_matrix
 
     @property
-    def meta_path_adj(self) -> torch.tensor():
+    def meta_path_adj(self):
         meta_path_adj = None
         if isinstance(self.meta_path[0], str):
             for i in range(len(self.meta_path) - 1):
@@ -94,8 +94,8 @@ class HeteroGraph(object):
         ret = ('Graph(num_nodes={node},\n'
                '      num_edges={edge},\n'
                '      metagraph={meta})')
-        nnode_dict = {node: len(index) for node, index in self.node_index_map}
-        nedge_dict = {edge: len(adj) for edge, adj in self.HG_adj}
+        nnode_dict = {node: len(index) for node, index in self.node_index_map.items()}
+        nedge_dict = {edge: sum([sum(row) for row in adj]) for edge, adj in self.HG_adj.items()}
         meta = "->".join(self.meta_path) if isinstance(self.meta_path[0], str) else ",".join(
             ["->".join(mp) for mp in self.meta_path])
         return ret.format(node=nnode_dict, edge=nedge_dict, meta=meta)
