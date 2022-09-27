@@ -1,6 +1,4 @@
-import collections
 import pandas as pd
-import networkx as nx
 
 
 def procession_graph(edges: pd.DataFrame, sample_num=10000):
@@ -16,11 +14,12 @@ def procession_graph(edges: pd.DataFrame, sample_num=10000):
 
 
 class HeteroGraph(object):
-    def __init__(self, graph_idx=[], edge_types=['_U', '_I'], meta_path=[['_E', '_A', '_E']], node_frames=None, edge_frames=None):
+    def __init__(self, graph_idx=[], edge_types=['_U', '_I'], meta_path=['_U', '_I', '_U'], is_digraph=True, node_frames=None, edge_frames=None):
         assert len(graph_idx) == len(edge_types)
         self.graph_idx = graph_idx
         self.edge_types = edge_types
         self.meta_path = meta_path
+        self.is_digraph = is_digraph
         self.node_features = node_frames
         self.edge_features = edge_frames
         self.node_index_map = self._node_map_index()
@@ -46,9 +45,13 @@ class HeteroGraph(object):
             for r, edges in zip(self.graph_idx, self.edge_types):
                 adj = self._single_relation_to_adj(r, edges)
                 HG_adj[edges[0]+'->'+edges[1]] = adj
+                if self.is_digraph:
+                    HG_adj[edges[1] + '->' + edges[0]] = list(map(list, zip(*adj)))
         else:
             adj = self._single_relation_to_adj(self.graph_idx, self.edge_types)
             HG_adj[self.edge_types[0]+'->'+self.edge_types[1]] = adj
+            if self.is_digraph:
+                HG_adj[self.edge_types[1] + '->' + self.edge_types[0]] = list(map(list, zip(*adj)))
         return HG_adj
 
     def _single_relation_to_adj(self, relation, edge_types):
@@ -59,11 +62,15 @@ class HeteroGraph(object):
             relation_matrix[x_index][y_index] = 1
         return relation_matrix
 
+    @property
+    def meta_path_adj(self):
+        pass
+
     def __repr__(self):
         ret = ('Graph(num_nodes={node},\n'
                '      num_edges={edge},\n'
                '      metagraph={meta})')
         nnode_dict = {node: len(index) for node, index in self.node_index_map}
         nedge_dict = {edge: len(adj) for edge, adj in self.HG_adj}
-        meta = str(self.metagraph().edges(keys=True))
+        meta = "->".join(self.meta_path) if isinstance(self.meta_path[0], str) else ",".join(["->".join(mp) for mp in self.meta_path])
         return ret.format(node=nnode_dict, edge=nedge_dict, meta=meta)
