@@ -1,17 +1,13 @@
-import torch
+from scipy.sparse import csr_matrix
 import pandas as pd
 
 
-def procession_graph(edges: pd.DataFrame, sample_num=10000):
-    edges = edges.sample(sample_num)
+def procession_graph(edges: pd.DataFrame):
     users = set(edges['user_id'])
     items = set(edges['sku_id'])
     user_to_idx = {x: i for i, x in enumerate(users)}  # user编号
     item_to_idx = {x: i for i, x in enumerate(items)}  # item编号
-    user_item_src = [user_to_idx.get(user_id) for user_id in edges['user_id']]
-    user_item_dst = [item_to_idx.get(item_id) for item_id in edges['sku_id']]
-    HG = HeteroGraph([user_item_src, user_item_dst], edge_types=['user', 'item'], meta_path=['user', 'item', 'user'])
-    return HG, list(users), user_to_idx, list(items), item_to_idx
+    return list(users), user_to_idx, list(items), item_to_idx
 
 
 class HeteroGraph(object):
@@ -48,21 +44,19 @@ class HeteroGraph(object):
                 adj = self._single_relation_to_adj(r, edges)
                 HG_adj[edges[0] + '->' + edges[1]] = adj
                 if not self.is_digraph:
-                    HG_adj[edges[1] + '->' + edges[0]] = list(map(list, zip(*adj)))
+                    HG_adj[edges[1] + '->' + edges[0]] = adj.T
         else:
             adj = self._single_relation_to_adj(self.graph_idx, self.edge_types)
             HG_adj[self.edge_types[0] + '->' + self.edge_types[1]] = adj
             if not self.is_digraph:
-                HG_adj[self.edge_types[1] + '->' + self.edge_types[0]] = list(map(list, zip(*adj)))
+                HG_adj[self.edge_types[1] + '->' + self.edge_types[0]] = adj.T
         return HG_adj
 
     def _single_relation_to_adj(self, relation, edge_types):
         src = self.node_index_map[edge_types[0]]
         dst = self.node_index_map[edge_types[1]]
-        relation_matrix = [[0 for _ in range(len(dst))] for _ in range(len(src))]
-        for x_index, y_index in zip(*relation):
-            relation_matrix[x_index][y_index] = 1
-        return relation_matrix
+        data = [1 for _ in range(len(relation[0]))]
+        return csr_matrix((data, relation), shape=(len(src), len(dst)))
 
     @property
     def meta_path_adj(self):
@@ -70,9 +64,9 @@ class HeteroGraph(object):
         if isinstance(self.meta_path[0], str):
             for i in range(len(self.meta_path) - 1):
                 if meta_path_adj is None:
-                    meta_path_adj = torch.tensor(self.HG_adj[self.meta_path[i] + '->' + self.meta_path[i + 1]])
+                    meta_path_adj = self.HG_adj[self.meta_path[i] + '->' + self.meta_path[i + 1]]
                 else:
-                    meta_path_adj = meta_path_adj*torch.tensor(self.HG_adj[self.meta_path[i] + '->' + self.meta_path[i + 1]])
+                    meta_path_adj = meta_path_adj * self.HG_adj[self.meta_path[i] + '->' + self.meta_path[i + 1]]
                     mask = meta_path_adj > 0
                     meta_path_adj[mask] = 1
             return meta_path_adj
@@ -81,9 +75,9 @@ class HeteroGraph(object):
             for mp in self.meta_path:
                 for i in range(len(mp) - 1):
                     if meta_path_adj is None:
-                        meta_path_adj = torch.tensor(self.HG_adj[mp[i] + '->' + mp[i + 1]])
+                        meta_path_adj = self.HG_adj[mp[i] + '->' + mp[i + 1]]
                     else:
-                        meta_path_adj = meta_path_adj * torch.tensor(self.HG_adj[mp[i] + '->' + mp[i + 1]])
+                        meta_path_adj = meta_path_adj * self.HG_adj[mp[i] + '->' + mp[i + 1]]
                         mask = meta_path_adj > 0
                         meta_path_adj[mask] = 1
                 meta_paths_adj.append(meta_path_adj)
@@ -95,7 +89,7 @@ class HeteroGraph(object):
                '      num_edges={edge},\n'
                '      metagraph={meta})')
         nnode_dict = {node: len(index) for node, index in self.node_index_map.items()}
-        nedge_dict = {edge: sum([sum(row) for row in adj]) for edge, adj in self.HG_adj.items()}
+        nedge_dict = {edge: adj.getnnz() for edge, adj in self.HG_adj.items()}
         meta = "->".join(self.meta_path) if isinstance(self.meta_path[0], str) else ",".join(
             ["->".join(mp) for mp in self.meta_path])
         return ret.format(node=nnode_dict, edge=nedge_dict, meta=meta)
