@@ -59,7 +59,8 @@ class HeteroGraph(object):
         return csr_matrix((data, relation), shape=(len(src), len(dst)))
 
     @property
-    def meta_path_adj(self):
+    def meta_path_adj(self, meta_path=None):
+        self.meta_path = meta_path if meta_path is not None else self.meta_path
         meta_path_adj = None
         if isinstance(self.meta_path[0], str):
             for i in range(len(self.meta_path) - 1):

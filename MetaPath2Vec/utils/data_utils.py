@@ -3,6 +3,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from utils.graph_utils import procession_graph, HeteroGraph
+from utils.sample_utils import RandomWalker
 
 
 def read_JData(data_dir=os.path.join('../', 'data'), sample_num=10000):
