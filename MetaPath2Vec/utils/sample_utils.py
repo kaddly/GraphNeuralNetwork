@@ -11,7 +11,7 @@ def partition_num(num, workers):
 
 
 class RandomWalker:
-    def __init__(self, HG, user_to_idx):
+    def __init__(self, HG, user_to_idx=None):
         self.HG = HG
         self.user_to_idx = user_to_idx
 
