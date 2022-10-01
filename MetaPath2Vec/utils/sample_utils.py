@@ -28,7 +28,7 @@ class RandomWalker:
 
     def simulate_walks(self, num_walks, meta_path, workers=1, verbose=0):
         HG = self.HG
-        nodes = HG.node_index_map[meta_path[0]]
+        nodes = list(HG.node_index_map[meta_path[0]])
         results = Parallel(n_jobs=workers, verbose=verbose)(
             delayed(self._simulate_walks)(nodes, num, meta_path) for num in
             partition_num(num_walks, workers))
