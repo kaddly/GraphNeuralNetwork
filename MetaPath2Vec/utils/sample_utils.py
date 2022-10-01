@@ -21,7 +21,7 @@ class RandomWalker:
         candidate = start_node
         for i in range(len(meta_path) - 1):
             meta_path_adj = HG.HG_adj[meta_path[i] + '->' + meta_path[i + 1]]
-            candidates = meta_path_adj[candidate].nonzero()[0]
+            candidates = meta_path_adj[candidate].nonzero()[1]
             candidate = random.choice(candidates)
             walk.append(candidate)
         return walk

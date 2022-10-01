@@ -23,8 +23,7 @@ def read_JData(data_dir=os.path.join('../', 'data'), sample_num=10000):
 def load_JData(batch_size=128):
     HG, user_features, nodes_features, idx_to_users, user_to_idx, idx_to_items, item_to_idx = read_JData()
     generator = RandomWalker(HG)
-    walks = generator.simulate_walks(num_walks=1000, meta_path=['user', 'item', 'user', 'item', 'user'], workers=2)
-    print(walks)
+    contexts = generator.simulate_walks(num_walks=10, meta_path=['user', 'item', 'user', 'item', 'user'], workers=2)
 
 
 load_JData()
