@@ -1,5 +1,14 @@
 from scipy.sparse import csr_matrix
 import pandas as pd
+import collections
+
+
+def count_corpus(tokens):
+    """统计词元的频率"""
+    # 这里的tokens是1d或者2d列表
+    if len(tokens) == 0 or isinstance(tokens[0], list):
+        tokens = [token for line in tokens for token in line]
+    return collections.Counter(tokens)
 
 
 def procession_graph(edges: pd.DataFrame):

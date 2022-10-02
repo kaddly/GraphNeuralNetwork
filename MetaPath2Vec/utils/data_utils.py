@@ -1,8 +1,10 @@
 import os
 import pandas as pd
+import math
+import random
 import torch
 from torch.utils.data import Dataset, DataLoader
-from utils.graph_utils import procession_graph, HeteroGraph
+from utils.graph_utils import procession_graph, HeteroGraph, count_corpus
 from utils.sample_utils import RandomWalker
 
 
@@ -18,6 +20,20 @@ def read_JData(data_dir=os.path.join('../', 'data'), sample_num=10000):
     user_item_dst = [item_to_idx.get(item_id) for item_id in edge_f['sku_id']]
     HG = HeteroGraph([user_item_src, user_item_dst], edge_types=['user', 'item'], meta_path=['user', 'item', 'user'])
     return HG, user_features, nodes_features, idx_to_users, user_to_idx, idx_to_items, item_to_idx
+
+
+def subsample(sentences):
+    """下采样高频词"""
+    # 排除未知词元'<UNK>'
+    sentences = [[token for token in line] for line in sentences]
+    counter = count_corpus(sentences)
+    num_tokens = sum(counter.values())
+
+    # 如果在下采样期间保留词元，则返回True
+    def keep(token):
+        return (random.randint(0, 1) < math.sqrt(1e-4 / counter[token] * num_tokens))
+
+    return ([[token for token in line if keep(token)] for line in sentences], counter)
 
 
 def load_JData(batch_size=128):
