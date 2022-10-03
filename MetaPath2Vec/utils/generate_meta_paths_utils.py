@@ -4,7 +4,7 @@ from utils.graph_utils import procession_graph, HeteroGraph
 from utils.sample_utils import RandomWalker
 
 
-def read_JData(data_dir=os.path.join('../', 'data'), sample_num=10000):
+def read_JData(data_dir=os.path.join('./', 'data'), sample_num=10000):
     edge_f = pd.read_csv(os.path.join(data_dir, 'data_action.csv'))
     user_features = pd.read_csv(os.path.join(data_dir, 'user_features.csv'))
     nodes_features = pd.read_csv(os.path.join(data_dir, 'item_features.csv'))
@@ -20,11 +20,11 @@ def read_JData(data_dir=os.path.join('../', 'data'), sample_num=10000):
 
 def parse_trace(trace, user_index_id_map, item_index_id_map):
     s = []
-    for index in trace:
+    for index in range(len(trace)):
         if index % 2 == 0:
-            s.append(user_index_id_map[index])
+            s.append(user_index_id_map[trace[index]])
         else:
-            s.append(item_index_id_map[index])
+            s.append(item_index_id_map[trace[index]])
     return ','.join(s)
 
 
