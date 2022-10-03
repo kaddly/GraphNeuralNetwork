@@ -24,16 +24,14 @@ def read_JData(data_dir=os.path.join('../', 'data'), sample_num=10000):
 
 def subsample(sentences):
     """下采样高频词"""
-    # 排除未知词元'<UNK>'
-    sentences = [[token for token in line] for line in sentences]
     counter = count_corpus(sentences)
     num_tokens = sum(counter.values())
 
     # 如果在下采样期间保留词元，则返回True
     def keep(token):
-        return (random.randint(0, 1) < math.sqrt(1e-4 / counter[token] * num_tokens))
+        return random.randint(0, 1) < math.sqrt(1e-4 / counter[token] * num_tokens)
 
-    return ([[token for token in line if keep(token)] for line in sentences], counter)
+    return [[token for token in line if keep(token)] for line in sentences], counter
 
 
 def get_centers_and_contexts(corpus, max_window_size):
@@ -57,7 +55,7 @@ def get_centers_and_contexts(corpus, max_window_size):
 def get_negative(all_contexts, idx2node, counter, K):
     """返回负采样中的噪声词"""
     # 索引为1、2、...（索引0是词表中排除的未知标记）
-    sampling_weights = [counter[idx2node[i]] ** 0.75 for i in range(0, len(idx2node))]
+    sampling_weights = [counter[i] ** 0.75 for i in range(0, len(idx2node))]
     all_negatives, generator = [], RandomGenerator(sampling_weights)
     for contexts in all_contexts:
         negatives = []
@@ -70,18 +68,28 @@ def get_negative(all_contexts, idx2node, counter, K):
     return all_negatives
 
 
-def load_JData(batch_size=128, max_window_size=5, num_noise_words=2):
+def parse_trace(trace, user_index_id_map, item_index_id_map):
+    s = []
+    for index in trace:
+        if index % 2 == 0:
+            s.append(user_index_id_map[index])
+        else:
+            s.append(item_index_id_map[index])
+    return s
+
+
+def load_JData(batch_size=128, meta_path=['user', 'item', 'user', 'item', 'user'], max_window_size=2, num_noise_words=2):
     HG, user_features, nodes_features, idx_to_users, user_to_idx, idx_to_items, item_to_idx = read_JData()
     generator = RandomWalker(HG)
-    all_contexts = generator.simulate_walks(num_walks=10, meta_path=['user', 'item', 'user', 'item', 'user'], workers=2)
-    print('load contexts:'+str(len(all_contexts)))
+    trs = generator.simulate_walks(num_walks=10, meta_path=meta_path, workers=2)
+    all_contexts = [parse_trace(tr, idx_to_users, idx_to_items) for tr in trs]
+    print(f'load contexts:{len(all_contexts)}')
     subsampled, counter = subsample(all_contexts)
-    print('load subsampled contexts:' + str(len(subsampled)))
-    corpus = [[node2idx[token] for token in line] for line in subsampled]
-    all_centers, all_contexts = get_centers_and_contexts(corpus, max_window_size)
-    print('load all_centers:'+str(len(all_centers)))
-    all_negatives = get_negative(all_contexts, idx2node, counter, num_noise_words)
-    print('load all_negatives:' + str(len(all_negatives)))
+    print(f'load subsampled contexts:{len(subsampled)}')
+    all_centers, all_contexts = get_centers_and_contexts(subsampled, max_window_size)
+    print(f'load all_centers:{len(all_contexts)}')
+    all_negatives = get_negative(all_contexts, idx_to_users, counter, num_noise_words)
+    print(f'load all_negatives:{len(all_negatives)}')
 
 
 load_JData()
