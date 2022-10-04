@@ -106,13 +106,3 @@ def load_JData(batch_size=128, max_window_size=4, num_noise_words=4):
     dataset = JDataset(all_centers, all_contexts, all_negatives)
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
     return data_iter, vocab
-
-
-data_iter, vocab = load_JData(16)
-for batch in data_iter:
-    print(batch[0])
-    print(batch[0].shape)
-    print(batch[1])
-    print(batch[2])
-    print(batch[3])
-    break
