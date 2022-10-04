@@ -1,19 +1,28 @@
 import os
-import pandas as pd
 import math
 import random
 import torch
 from torch.utils.data import Dataset, DataLoader
-from utils.graph_utils import count_corpus
+from utils.graph_utils import count_corpus, Vocab
 from utils.sample_utils import RandomGenerator
 
 
-def read_meta_paths(data_dir=os.path.join('../', 'data'), sample_num=10000):
-    return None
+def read_meta_paths(data_dir=os.path.join('../', 'data')):
+    if not os.path.exists(os.path.join(data_dir, 'output_path.txt')):
+        raise FileNotFoundError("please generate meta_paths!")
+    contexts = []
+    with open(os.path.join(data_dir, 'output_path.txt'), 'r') as f:
+        for meta_path in f.readlines():
+            if len(meta_path) == 0:
+                continue
+            contexts.append(meta_path.split(','))
+    return contexts
 
 
-def subsample(sentences):
+def subsample(sentences, vocab):
     """下采样高频词"""
+    # 排除未知词元'<UNK>'
+    sentences = [[token for token in line if vocab[token] != vocab.unk] for line in sentences]
     counter = count_corpus(sentences)
     num_tokens = sum(counter.values())
 
@@ -35,17 +44,16 @@ def get_centers_and_contexts(corpus, max_window_size):
         for i in range(len(line)):
             window_size = random.randint(1, max_window_size)
             indices = list(range(max(0, i - window_size), min(len(line), i + 1 + window_size)))
-
             # 从上下文词中排除中心词
             indices.remove(i)
             context.append([line[idx] for idx in indices])
     return centers, context
 
 
-def get_negative(all_contexts, idx2node, counter, K):
+def get_negative(all_contexts, vocab, counter, K):
     """返回负采样中的噪声词"""
     # 索引为1、2、...（索引0是词表中排除的未知标记）
-    sampling_weights = [counter[i] ** 0.75 for i in range(0, len(idx2node))]
+    sampling_weights = [counter[vocab.to_tokens(i)] ** 0.75 for i in range(1, len(vocab))]
     all_negatives, generator = [], RandomGenerator(sampling_weights)
     for contexts in all_contexts:
         negatives = []
@@ -58,15 +66,53 @@ def get_negative(all_contexts, idx2node, counter, K):
     return all_negatives
 
 
-def load_JData(batch_size=128, max_window_size=2, num_noise_words=2):
-    all_contexts = read_meta_paths()
-    print(f'load contexts:{len(all_contexts)}')
-    subsampled, counter = subsample(all_contexts)
-    print(f'load subsampled contexts:{len(subsampled)}')
-    all_centers, all_contexts = get_centers_and_contexts(subsampled, max_window_size)
-    print(f'load all_centers:{len(all_contexts)}')
-    all_negatives = get_negative(all_contexts, counter, num_noise_words)
-    print(f'load all_negatives:{len(all_negatives)}')
+class JDataset(Dataset):
+    def __init__(self, centers, contexts, negatives):
+        assert len(centers) == len(contexts) == len(negatives)
+        self.centers = centers
+        self.contexts = contexts
+        self.negatives = negatives
+
+    def __getitem__(self, item):
+        return self.centers[item], self.contexts[item], self.negatives[item]
+
+    def __len__(self):
+        return len(self.centers)
 
 
-load_JData()
+def batchify(data):
+    """返回带有负采样的跳元模型的⼩批量样本"""
+    max_len = max(len(c) + len(n) for _, c, n in data)
+    centers, contexts_negatives, masks, labels = [], [], [], []
+    for center, context, negative in data:
+        cur_len = len(context) + len(negative)
+        centers += [center]
+        contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
+        masks += [[1] * cur_len + [0] * (max_len - cur_len)]
+        labels += [[1] * len(context) + [0] * (max_len - len(context))]
+    return (torch.tensor(centers).reshape((-1, 1))
+            , torch.tensor(contexts_negatives)
+            , torch.tensor(masks)
+            , torch.tensor(labels))
+
+
+def load_JData(batch_size=128, max_window_size=4, num_noise_words=4):
+    sentences = read_meta_paths()
+    vocab = Vocab(sentences, min_freq=10)
+    subsampled, counter = subsample(sentences, vocab)
+    corpus = [vocab[line] for line in subsampled]
+    all_centers, all_contexts = get_centers_and_contexts(corpus, max_window_size)
+    all_negatives = get_negative(all_contexts, vocab, counter, num_noise_words)
+    dataset = JDataset(all_centers, all_contexts, all_negatives)
+    data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
+    return data_iter, vocab
+
+
+data_iter, vocab = load_JData(16)
+for batch in data_iter:
+    print(batch[0])
+    print(batch[0].shape)
+    print(batch[1])
+    print(batch[2])
+    print(batch[3])
+    break
