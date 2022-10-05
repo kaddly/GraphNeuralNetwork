@@ -1,5 +1,7 @@
 import torch
-from utils import generate_meta_paths
+from models import SkipGram
+from utils import data_procession, generate_meta_paths, load_JData
+from train_utils import train
 
 
 def parse_args():
@@ -9,4 +11,4 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    pass
+    load_JData()
