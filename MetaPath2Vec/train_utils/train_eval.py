@@ -19,6 +19,10 @@ class SigmoidBCELoss(nn.Module):
 
 
 def train(net, data_iter, args):
+    def init_weights(m):
+        if type(m) == nn.Embedding:
+            nn.init.xavier_uniform_(m.weight)
+
     # 模型参数保存路径
     parameter_path = os.path.join(args.model_dict_path, args.model)
     if not os.path.exists(parameter_path):
@@ -26,6 +30,8 @@ def train(net, data_iter, args):
 
     if args.is_current_train and os.path.exists(os.path.join(parameter_path, args.model + '.ckpt')):
         net.load_state_dict(torch.load(os.path.join(parameter_path, args.model + '.ckpt')), False)
+    else:
+        net.apply(init_weights)
     device = torch.device(args.device) if torch.cuda.is_available() else torch.device('cpu')
     net = net.to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, weight_decay=args.weight_decay)

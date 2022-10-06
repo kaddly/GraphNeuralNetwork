@@ -12,12 +12,8 @@ class SkipGramModel(nn.Module):
         super(SkipGramModel, self).__init__(**kwargs)
         self.emb_size = emb_size
         self.emb_dimension = emb_dimension
-        self.u_embeddings = nn.Embedding(emb_size, emb_dimension, sparse=True)
-        self.v_embeddings = nn.Embedding(emb_size, emb_dimension, sparse=True)
-
-        initRange = 1.0 / self.emb_dimension
-        init.uniform_(self.u_embeddings.weight.data, -initRange, initRange)
-        init.constant_(self.v_embeddings.weight.data, 0)
+        self.u_embeddings = nn.Embedding(emb_size, emb_dimension)
+        self.v_embeddings = nn.Embedding(emb_size, emb_dimension)
 
     def forward(self, center, contexts_and_negatives):
         v = self.v_embeddings(center)
