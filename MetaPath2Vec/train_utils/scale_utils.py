@@ -7,6 +7,8 @@ def accuracy(y_hat, y):
     Defined in :numref:`sec_softmax_scratch`"""
     if len(y_hat.shape) > 1 and y_hat.shape[1] > 1:
         y_hat = torch.argmax(y_hat, axis=1)
+    else:
+        y_hat = y_hat > 0.5
     cmp = y_hat.to(dtype=y.dtype) == y
     cmp = cmp.to(dtype=y.dtype)
     return float(cmp.sum()) / len(cmp)
@@ -24,6 +26,8 @@ def true_positive(pred, target, num_classes):
     """
     if len(pred.shape) > 1 and pred.shape[1] > 1:
         pred = torch.argmax(pred, axis=1)
+    else:
+        pred = pred > 0.5
     out = []
     for i in range(num_classes):
         out.append(((pred == i) & (target == i)).sum())
@@ -43,6 +47,8 @@ def true_negative(pred, target, num_classes):
     """
     if len(pred.shape) > 1 and pred.shape[1] > 1:
         pred = torch.argmax(pred, axis=1)
+    else:
+        pred = pred > 0.5
     out = []
     for i in range(num_classes):
         out.append(((pred != i) & (target != i)).sum())
@@ -62,6 +68,8 @@ def false_positive(pred, target, num_classes):
     """
     if len(pred.shape) > 1 and pred.shape[1] > 1:
         pred = torch.argmax(pred, axis=1)
+    else:
+        pred = pred > 0.5
     out = []
     for i in range(num_classes):
         out.append(((pred == i) & (target != i)).sum())
@@ -81,6 +89,8 @@ def false_negative(pred, target, num_classes):
     """
     if len(pred.shape) > 1 and pred.shape[1] > 1:
         pred = torch.argmax(pred, axis=1)
+    else:
+        pred = pred > 0.5
     out = []
     for i in range(num_classes):
         out.append(((pred != i) & (target == i)).sum())
@@ -101,6 +111,8 @@ def precision(pred, target, num_classes):
     """
     if len(pred.shape) > 1 and pred.shape[1] > 1:
         pred = torch.argmax(pred, axis=1)
+    else:
+        pred = pred > 0.5
     tp = true_positive(pred, target, num_classes).to(torch.float)
     fp = false_positive(pred, target, num_classes).to(torch.float)
 
@@ -123,6 +135,8 @@ def recall(pred, target, num_classes):
     """
     if len(pred.shape) > 1 and pred.shape[1] > 1:
         pred = torch.argmax(pred, axis=1)
+    else:
+        pred = pred > 0.5
     tp = true_positive(pred, target, num_classes).to(torch.float)
     fn = false_negative(pred, target, num_classes).to(torch.float)
 
@@ -146,10 +160,12 @@ def f_beta_score(pred, target, num_classes, beta=1):
     """
     if len(pred.shape) > 1 and pred.shape[1] > 1:
         pred = torch.argmax(pred, axis=1)
+    else:
+        pred = pred > 0.5
     prec = precision(pred, target, num_classes)
     rec = recall(pred, target, num_classes)
 
-    score = (1+beta**2)/(beta**2/rec+1/prec)
+    score = (1 + beta ** 2) / (beta ** 2 / rec + 1 / prec)
     score[torch.isnan(score)] = 0
 
     return score

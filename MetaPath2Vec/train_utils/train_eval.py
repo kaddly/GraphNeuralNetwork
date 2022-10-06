@@ -37,7 +37,7 @@ def train(net, data_iter, args):
     optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     if args.scheduler_lr:
-        lr_scheduler = create_lr_scheduler(optimizer, 1, args.num_epoch)
+        lr_scheduler = create_lr_scheduler(optimizer, args.num_batch, args.num_epoch)
     loss = SigmoidBCELoss()
     start_time = time.time()
     total_batch = 0  # 记录进行到多少batch
@@ -52,14 +52,16 @@ def train(net, data_iter, args):
             center, context_negative, mask, label = [data.to(device) for data in batch]
             pred = net(center, context_negative)
             train_loss = (
-                    loss(pred.reshape(label.shape).float(), label.float(), mask) / mask.sum(axis=1) * mask.shape[1])
-            train_loss.sum().backward()
+                    loss(pred.reshape(label.shape).float(), label.float(), mask) / mask.sum(axis=1) * mask.shape[1]).sum()
+
+            train_loss.backward()
             optimizer.step()
             if args.scheduler_lr:
                 lr_scheduler.step()
             with torch.no_grad():
-                metric.add(train_loss.sum(), accuracy(pred, label), recall(pred, label, 2),
-                           f_beta_score(pred, label, 2), label.shape[0])
+                metric.add(train_loss, accuracy(pred.reshape(-1).float(), label.reshape(-1).float()),
+                           recall(pred.reshape(-1).float(), label.reshape(-1).float(), 2).mean(),
+                           f_beta_score(pred.reshape(-1).float(), label.reshape(-1).float(), 2).mean(), label.shape[0])
             if total_batch % args.print_freq == 0:
                 lr_current = optimizer.param_groups[0]["lr"]
                 if train_loss < best_loss:
