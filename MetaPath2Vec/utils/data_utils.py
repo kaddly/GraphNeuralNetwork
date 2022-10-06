@@ -7,7 +7,7 @@ from utils.graph_utils import count_corpus, Vocab
 from utils.sample_utils import RandomGenerator
 
 
-def read_meta_paths(data_dir=os.path.join('../', 'data')):
+def read_meta_paths(data_dir=os.path.join('./', 'data')):
     if not os.path.exists(os.path.join(data_dir, 'output_path.txt')):
         raise FileNotFoundError("please generate meta_paths!")
     contexts = []
