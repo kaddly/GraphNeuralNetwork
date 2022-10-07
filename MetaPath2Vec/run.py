@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument('--max_window_size', type=int, default=4, help='MetaPaths max neighbor window size')
     parser.add_argument('--num_noise_words', type=int, default=4, help='MetaPaths noise words number')
     parser.add_argument("--device", default="cuda", help="training device")
-    parser.add_argument('--lr', type=float, default=0.5, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.1, help='learning rate')
     parser.add_argument('--weight_decay', type=float, default=0.001, help='l2 reg')
     parser.add_argument('--num_hidden', type=int, default=128, help='Node dimension')
     parser.add_argument('--is_current_train', type=bool, default=True, help='use current trained weight')

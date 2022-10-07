@@ -59,9 +59,9 @@ def train(net, data_iter, args):
             if args.scheduler_lr:
                 lr_scheduler.step()
             with torch.no_grad():
-                metric.add(train_loss, accuracy(pred.reshape(-1).float(), label.reshape(-1).float()),
-                           recall(pred.reshape(-1).float(), label.reshape(-1).float(), 2).mean(),
-                           f_beta_score(pred.reshape(-1).float(), label.reshape(-1).float(), 2).mean(), label.shape[0])
+                metric.add(train_loss, accuracy(pred.reshape(-1), label.reshape(-1), 2, mask.reshape(-1)),
+                           recall(pred.reshape(-1), label.reshape(-1), 2, mask.reshape(-1)).mean(),
+                           f_beta_score(pred.reshape(-1), label.reshape(-1), 2, mask.reshape(-1)).mean(), label.shape[0])
             if total_batch % args.print_freq == 0:
                 lr_current = optimizer.param_groups[0]["lr"]
                 if train_loss < best_loss:
