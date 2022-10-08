@@ -18,14 +18,15 @@ def read_meta_paths(data_dir=os.path.join('./', 'data')):
                 continue
             contexts.append(meta_path.split(','))
     with open(os.path.join(data_dir, 'HG.pkl'), 'rb') as f:
-        HG, idx_to_users, idx_to_items, meta_path = pickle.load(f)
-    return contexts, HG, idx_to_users, idx_to_items, meta_path
+        HG, idx_to_users, idx_to_items = pickle.load(f)
+    return contexts, HG, idx_to_users, idx_to_items
 
 
-def subsample(sentences, vocab):
+def subsample(sentences, vocab=None):
     """下采样高频词"""
-    # 排除未知词元'<UNK>'
-    sentences = [[token for token in line if vocab[token] != vocab.unk] for line in sentences]
+    if vocab is not None:
+        # 排除未知词元'<UNK>'
+        sentences = [[token for token in line if vocab[token] != vocab.unk] for line in sentences]
     counter = count_corpus(sentences)
     num_tokens = sum(counter.values())
 
@@ -69,6 +70,29 @@ def get_negative(all_contexts, vocab, counter, K):
     return all_negatives
 
 
+def get_negative_ultra(all_contexts, counter, K, HG, idx_to_users, idx_to_items, vocab):
+    user_sample_weights = [counter[idx_to_users[i]] ** 0.75 for i in HG.node_index_map['user']]
+    item_sample_weights = [counter[idx_to_items[i]] ** 0.75 for i in HG.node_index_map['item']]
+    all_negatives, user_generator, item_generator = [], RandomGenerator(user_sample_weights), RandomGenerator(
+        item_sample_weights)
+    for contexts in all_contexts:
+        negatives = []
+        i = 0 if vocab.to_tokens(contexts[-1]).split('_')[0] == 'u' else 1  # 偶数为item，奇数为user
+        while len(negatives) < len(contexts) * K:
+            if i % 2 == 0:
+                neg = vocab[idx_to_items[item_generator.draw()]]
+                if neg not in contexts:
+                    negatives.append(neg)
+                    i += 1
+            else:
+                neg = vocab[idx_to_users[user_generator.draw()]]
+                if neg not in contexts:
+                    negatives.append(neg)
+                    i += 1
+        all_negatives.append(negatives)
+    return all_negatives
+
+
 class JDataset(Dataset):
     def __init__(self, centers, contexts, negatives):
         assert len(centers) == len(contexts) == len(negatives)
@@ -100,12 +124,16 @@ def batchify(data):
 
 
 def load_JData(batch_size=128, max_window_size=4, num_noise_words=4, is_meta_path_ultra=False):
-    sentences, HG, idx_to_users, idx_to_items, meta_path = read_meta_paths()
-    vocab = Vocab(sentences, min_freq=10)
+    sentences, HG, idx_to_users, idx_to_items = read_meta_paths()
+    vocab = Vocab(sentences, min_freq=4)
     subsampled, counter = subsample(sentences, vocab)
     corpus = [vocab[line] for line in subsampled]
     all_centers, all_contexts = get_centers_and_contexts(corpus, max_window_size)
-    all_negatives = get_negative(all_contexts, vocab, counter, num_noise_words)
+    if is_meta_path_ultra:
+        all_negatives = get_negative_ultra(all_contexts, counter, num_noise_words, HG, idx_to_users, idx_to_items,
+                                           vocab)
+    else:
+        all_negatives = get_negative(all_contexts, vocab, counter, num_noise_words)
     dataset = JDataset(all_centers, all_contexts, all_negatives)
     data_iter = DataLoader(dataset, batch_size, shuffle=True, collate_fn=batchify)
     return data_iter, vocab

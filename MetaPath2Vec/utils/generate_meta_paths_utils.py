@@ -38,5 +38,5 @@ def generate_meta_paths(meta_path=['user', 'item', 'user', 'item', 'user']):
         res = parse_trace(tr, idx_to_users, idx_to_items)
         f.write(res + '\n')
     f = open("./data/HG.pkl", 'wb')
-    pickle.dump((HG, idx_to_users, idx_to_items, meta_path), f)
+    pickle.dump((HG, idx_to_users, idx_to_items), f)
     f.close()

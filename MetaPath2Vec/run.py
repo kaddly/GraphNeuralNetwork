@@ -14,6 +14,7 @@ def parse_args():
     parser.add_argument('--meta_path', type=list, default=['user', 'item', 'user', 'item', 'user'])
     parser.add_argument('--max_window_size', type=int, default=4, help='MetaPaths max neighbor window size')
     parser.add_argument('--num_noise_words', type=int, default=4, help='MetaPaths noise words number')
+    parser.add_argument('--is_meta_path_ultra', type=bool, default=True, help='if use meta_path++ to sample negatives')
     parser.add_argument("--device", default="cuda", help="training device")
     parser.add_argument('--lr', type=float, default=0.4, help='learning rate')
     parser.add_argument('--weight_decay', type=float, default=0.001, help='l2 reg')
@@ -27,8 +28,8 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    generate_meta_paths(args.meta_path)
-    # data_iter, vocab = load_JData(batch_size=args.num_batch, max_window_size=args.max_window_size,
-    #                               num_noise_words=args.num_noise_words)
-    # net = SkipGramModel(len(vocab), args.num_hidden)
-    # train(net, data_iter, args)
+    # generate_meta_paths(args.meta_path)
+    data_iter, vocab = load_JData(batch_size=args.num_batch, max_window_size=args.max_window_size,
+                                  num_noise_words=args.num_noise_words,is_meta_path_ultra=args.is_meta_path_ultra)
+    net = SkipGramModel(len(vocab), args.num_hidden)
+    train(net, data_iter, args)
