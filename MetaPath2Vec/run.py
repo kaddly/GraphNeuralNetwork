@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument('--max_window_size', type=int, default=4, help='MetaPaths max neighbor window size')
     parser.add_argument('--num_noise_words', type=int, default=4, help='MetaPaths noise words number')
     parser.add_argument("--device", default="cuda", help="training device")
-    parser.add_argument('--lr', type=float, default=0.1, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.4, help='learning rate')
     parser.add_argument('--weight_decay', type=float, default=0.001, help='l2 reg')
     parser.add_argument('--num_hidden', type=int, default=128, help='Node dimension')
     parser.add_argument('--is_current_train', type=bool, default=True, help='use current trained weight')
@@ -27,8 +27,8 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    # generate_meta_paths(args.meta_path)
-    data_iter, vocab = load_JData(batch_size=args.num_batch, max_window_size=args.max_window_size,
-                                  num_noise_words=args.num_noise_words)
-    net = SkipGramModel(len(vocab), args.num_hidden)
-    train(net, data_iter, args)
+    generate_meta_paths(args.meta_path)
+    # data_iter, vocab = load_JData(batch_size=args.num_batch, max_window_size=args.max_window_size,
+    #                               num_noise_words=args.num_noise_words)
+    # net = SkipGramModel(len(vocab), args.num_hidden)
+    # train(net, data_iter, args)

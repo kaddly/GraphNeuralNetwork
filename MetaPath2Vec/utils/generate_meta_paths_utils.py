@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import pickle
 from utils.graph_utils import procession_graph, HeteroGraph
 from utils.sample_utils import RandomWalker
 
@@ -35,5 +36,7 @@ def generate_meta_paths(meta_path=['user', 'item', 'user', 'item', 'user']):
     f = open("./data/output_path.txt", "w")
     for tr in trs:
         res = parse_trace(tr, idx_to_users, idx_to_items)
-        f.write(res+'\n')
+        f.write(res + '\n')
+    f = open("./data/HG.pkl", 'wb')
+    pickle.dump((HG, idx_to_users, idx_to_items, meta_path), f)
     f.close()

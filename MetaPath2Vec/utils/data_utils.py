@@ -1,6 +1,7 @@
 import os
 import math
 import random
+import pickle
 import torch
 from torch.utils.data import Dataset, DataLoader
 from utils.graph_utils import count_corpus, Vocab
@@ -16,7 +17,9 @@ def read_meta_paths(data_dir=os.path.join('./', 'data')):
             if len(meta_path) == 0:
                 continue
             contexts.append(meta_path.split(','))
-    return contexts
+    with open(os.path.join(data_dir, 'HG.pkl'), 'rb') as f:
+        HG, idx_to_users, idx_to_items, meta_path = pickle.load(f)
+    return contexts, HG, idx_to_users, idx_to_items, meta_path
 
 
 def subsample(sentences, vocab):
@@ -96,8 +99,8 @@ def batchify(data):
             , torch.tensor(labels))
 
 
-def load_JData(batch_size=128, max_window_size=4, num_noise_words=4):
-    sentences = read_meta_paths()
+def load_JData(batch_size=128, max_window_size=4, num_noise_words=4, is_meta_path_ultra=False):
+    sentences, HG, idx_to_users, idx_to_items, meta_path = read_meta_paths()
     vocab = Vocab(sentences, min_freq=10)
     subsampled, counter = subsample(sentences, vocab)
     corpus = [vocab[line] for line in subsampled]
