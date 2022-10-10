@@ -79,7 +79,7 @@ class HeteroGraph(object):
     def __repr__(self):
         ret = ('Graph(num_nodes={node},\n'
                '      num_edges={edge},\n'
-               '      metagraph={meta})')
+               '      meta_graph={meta})')
         nnode_dict = {node: len(index) for node, index in self.node_index_map.items()}
         nedge_dict = {edge: adj.getnnz() for edge, adj in self.HG_adj.items()}
         meta = "->".join(self.meta_path) if isinstance(self.meta_path[0], str) else ",".join(
