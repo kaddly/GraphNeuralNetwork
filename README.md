@@ -27,6 +27,7 @@
 - [HAN](./HAN)
 - [GTN](./GTN)
 - [MetaPath2Vec](./MetaPath2Vec)
+- [GATNE](./GATNE)
 
 
 
