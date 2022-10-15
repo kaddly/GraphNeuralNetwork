@@ -27,13 +27,6 @@ def walk(args):
     return [str(node) for node in walk]
 
 
-def initializer(init_G, init_node_type):
-    global G
-    G = init_G
-    global node_type
-    node_type = init_node_type
-
-
 class RWGraph:
     def __init__(self, nx_G, node_type_arr=None, num_workers=16):
         self.G = nx_G
