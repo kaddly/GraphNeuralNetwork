@@ -1,14 +1,7 @@
 import random
 from joblib import Parallel, delayed
-import multiprocessing
 import tqdm
-
-
-def partition_num(num, workers):
-    if num % workers == 0:
-        return [num // workers] * workers
-    else:
-        return [num // workers] * workers + [num % workers]
+import itertools
 
 
 def walk(args):
@@ -52,25 +45,22 @@ class RWGraph:
             for node in nodes:
                 yield node
 
-    def simulate_walks(self, num_walks, walk_length, schema=None):
+    def simulate_walks(self, num_walks, walk_length, schema=None, workers=1, verbose=0):
         all_walks = []
         nodes = list(self.G.keys())  # 节点顶点数量
         random.shuffle(nodes)
 
         if schema is None:
-            with multiprocessing.Pool(self.num_workers, initializer=initializer,
-                                      initargs=(self.G, self.node_type)) as pool:
-                all_walks = list(
-                    pool.imap(walk, ((walk_length, node, '') for node in tqdm(self.node_list(nodes, num_walks))),
-                              chunksize=256))
+            results = Parallel(n_jobs=workers, verbose=verbose)(
+                delayed(walk)(walk_length, node, '') for node in tqdm(self.node_list(nodes, num_walks)))
+            all_walks = list(itertools.chain(*results))
         else:
             schema_list = schema.split(',')
             for schema_iter in schema_list:
-                with multiprocessing.Pool(self.num_workers, initializer=initializer,
-                                          initargs=(self.G, self.node_type)) as pool:
-                    walks = list(pool.imap(walk, ((walk_length, node, schema_iter) for node in
-                                                  tqdm(self.node_list(nodes, num_walks)) if
-                                                  schema_iter.split('-')[0] == self.node_type[node]), chunksize=512))
+                results = Parallel(n_jobs=workers, verbose=verbose)(
+                    delayed(walk)(walk_length, node, schema_iter) for node in tqdm(self.node_list(nodes, num_walks)) if
+                    schema_iter.split('-')[0] == self.node_type[node])
+                walks = list(itertools.chain(*results))
                 all_walks.extend(walks)
 
         return all_walks
