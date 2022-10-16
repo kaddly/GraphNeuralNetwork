@@ -2,8 +2,10 @@ import math
 import os
 import random
 import pickle
+from collections import defaultdict
 import torch
 from torch.utils.data import DataLoader, Dataset
+from utils.sample_utils import RWGraph
 
 
 def read_train_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
@@ -75,8 +77,39 @@ def read_node_type(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset=
     return node_type
 
 
+def get_G_from_edges(edges):
+    edge_dict = defaultdict(set)
+    for edge in edges:
+        u, v = str(edge[0]), str(edge[1])
+        edge_dict[u].add(v)
+        edge_dict[v].add(u)
+    return edge_dict  # 每个节点和它相连接的节点
+
+
+def generate_walks(network_data, num_walks, walk_length, schema, data_dir=os.path.join(os.path.abspath('.'), 'data'),
+                   dataset='amazon', num_workers=2):
+    if schema is not None:
+        node_type = read_node_type(data_dir, dataset)
+    else:
+        node_type = None
+
+    all_walks = []  # 所有游走的list
+    for layer_id, layer_name in enumerate(network_data):
+        tmp_data = network_data[layer_name]  # 每个type对应到的点边信息
+        # start to do the random walk on a layer
+        # get_G_from_edges(tmp_data): 每个节点对应到相连接的点
+        layer_walker = RWGraph(get_G_from_edges(tmp_data), node_type, num_workers)  # RandomWalk Graph
+        print('Generating random walks for layer', layer_id)
+        layer_walks = layer_walker.simulate_walks(num_walks, walk_length, schema=schema)  # 生成随机游走的序列; 每个节点游走次数; 游走长度;
+
+        all_walks.append(layer_walks)
+
+        print('Finish generating the walks')
+
+    return all_walks
+
+
 def load_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
     training_data_by_type = read_train_data(data_dir, dataset)
     valid_true_data_by_edge, valid_false_data_by_edge = read_test_data(data_dir, dataset, file_name='valid.txt')
     testing_true_data_by_edge, testing_false_data_by_edge = read_test_data(data_dir, dataset, file_name='test.txt')
-
