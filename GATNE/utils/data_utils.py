@@ -12,7 +12,7 @@ def read_train_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset
     data_path = os.path.join(data_dir, dataset, 'train.txt')
     edge_data_by_type = dict()  # 每个type对应到的相连接节点
     all_nodes = list()  # 所有节点的集合
-    print("We are loading data from:" + dataset + '/train.txt')
+    print("We are loading data from:" + data_path)
     with open(data_path, 'r') as f:
         for line in f:
             words = line[:-1].split(" ")
@@ -32,7 +32,7 @@ def read_test_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset=
     true_edge_data_by_type = dict()  # true样本
     false_edge_data_by_type = dict()  # false样本
     all_nodes = list()
-    print("We are loading data from:" + dataset + "./" + file_name)
+    print("We are loading data from:" + data_path)
     with open(data_path, 'r') as f:
         for line in f:
             words = line[:-1].split(' ')
@@ -54,7 +54,7 @@ def read_test_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset=
 def read_feature(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
     data_path = os.path.join(data_dir, dataset, 'feature.txt')
     feature_dict = {}
-    print("We are loading data from:" + dataset + '/feature.txt')
+    print("We are loading data from:" + data_path)
     with open(data_path, 'r') as f:
         first = True
         for line in f:
@@ -69,7 +69,7 @@ def read_feature(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='a
 def read_node_type(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
     data_path = os.path.join(data_dir, dataset, 'node_type.txt')
     node_type = {}
-    print('We are loading node type from:' + dataset + '/node_type.txt')
+    print('We are loading node type from:' + data_path)
     with open(data_path, 'r') as f:
         for line in f:
             items = line.strip().split()
