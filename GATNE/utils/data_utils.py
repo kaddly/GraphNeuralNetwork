@@ -2,6 +2,7 @@ import math
 import os
 import random
 import pickle
+import tqdm
 from collections import defaultdict
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -107,6 +108,21 @@ def generate_walks(network_data, num_walks, walk_length, schema, data_dir=os.pat
         print('Finish generating the walks')
 
     return all_walks
+
+
+def generator_pairs(all_walks, vocab, window_size):
+    pairs = []
+    skip_window = window_size // 2
+    for layer_id, walks in enumerate(all_walks):
+        print('Generator training pairs for layer', layer_id)
+        for walk in tqdm(walks):
+            for i in range(len(walk)):  # 每个单词循环
+                for j in range(1, skip_window + 1):  # 向前向后的窗口长度
+                    if i - j >= 0:
+                        pairs.append((vocab[walk[i]].index, vocab[walk[i - j]].index, layer_id))  # 向前窗口涉及到的单词
+                    if i + j < len(walk):
+                        pairs.append((vocab[walk[i]].index, vocab[walk[i + j]].index, layer_id))  # 向后窗口涉及到的单词
+    return pairs  # 所有单词上线文的索引, type
 
 
 def load_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
