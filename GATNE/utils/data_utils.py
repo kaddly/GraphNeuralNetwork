@@ -4,6 +4,7 @@ import random
 import pickle
 import tqdm
 from collections import defaultdict
+from six import iteritems
 import torch
 from torch.utils.data import DataLoader, Dataset
 from utils.sample_utils import RWGraph
@@ -123,6 +124,52 @@ def generator_pairs(all_walks, vocab, window_size):
                     if i + j < len(walk):
                         pairs.append((vocab[walk[i]].index, vocab[walk[i + j]].index, layer_id))  # 向后窗口涉及到的单词
     return pairs  # 所有单词上线文的索引, type
+
+
+class Vocab(object):
+
+    def __init__(self, count, index):
+        self.count = count
+        self.index = index
+
+
+def generator_vocab(all_walks):
+    index2word = []
+    raw_vocab = defaultdict(int)
+    # 随机游走每个单词出现的次数
+    for layer_id, walks in enumerate(all_walks):  # 按照type类别
+        print('Counting vocab for layer', layer_id)
+        for walk in tqdm(walks):
+            for word in walk:  # 记录每个单词出现的次数
+                raw_vocab[word] += 1
+
+    vocab = {}
+    for word, v in iteritems(raw_vocab):
+        vocab[word] = Vocab(count=v, index=len(index2word))  # 用一个类表示节点的次数和index
+        index2word.append(word)
+
+
+def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data')):
+    walk_file = os.path.join(data_dir, 'walk.txt')
+    print('Loading walks')
+    all_walks = []
+    with open(walk_file, 'r') as f:
+        for line in f:
+            content = line.strip().split()
+            layer_id = int(content[0])
+            if layer_id >= len(all_walks):
+                all_walks.append([])
+            all_walks[layer_id].append(content[1:])
+    return all_walks
+
+
+def save_walks(data_dir=os.path.join(os.path.abspath('.'), 'data'), all_walks=[]):
+    walk_file = os.path.join(data_dir, 'walk.txt')
+    with open(walk_file, 'w') as f:
+        for layer_id, walks in enumerate(all_walks):
+            print('Saving walks for layer', layer_id)
+            for walk in tqdm(walks):
+                f.write(' '.join([str(layer_id)] + [str(x) for x in walk]) + '\n')
 
 
 def load_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
