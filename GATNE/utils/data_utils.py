@@ -3,7 +3,6 @@ import os
 import random
 import pickle
 import tqdm
-import numpy as np
 from collections import defaultdict
 from six import iteritems
 import torch
@@ -202,9 +201,9 @@ def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samp
                 neighbors[i][r] = [i] * neighbor_samples
             elif len(neighbors[i][r]) < neighbor_samples:  # 如果邻居节点数量小于采样邻居数量，进行重采样
                 neighbors[i][r].extend(
-                    list(np.random.choice(neighbors[i][r], size=neighbor_samples - len(neighbors[i][r]))))
+                    list(random.choices(neighbors[i][r], k=neighbor_samples - len(neighbors[i][r]))))
             elif len(neighbors[i][r]) > neighbor_samples:  # 如果邻居节点数量大于采样邻居数量，进行邻居大小数量的采样
-                neighbors[i][r] = list(np.random.choice(neighbors[i][r], size=neighbor_samples))
+                neighbors[i][r] = list(random.sample(neighbors[i][r], k=neighbor_samples))
     return neighbors  # 每个节点的邻居采样
 
 
