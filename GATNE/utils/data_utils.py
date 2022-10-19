@@ -3,6 +3,7 @@ import os
 import random
 import pickle
 import tqdm
+import numpy as np
 from collections import defaultdict
 from six import iteritems
 import torch
@@ -147,6 +148,7 @@ def generator_vocab(all_walks):
     for word, v in iteritems(raw_vocab):
         vocab[word] = Vocab(count=v, index=len(index2word))  # 用一个类表示节点的次数和index
         index2word.append(word)
+    return vocab, index2word
 
 
 def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data')):
@@ -170,6 +172,40 @@ def save_walks(data_dir=os.path.join(os.path.abspath('.'), 'data'), all_walks=[]
             print('Saving walks for layer', layer_id)
             for walk in tqdm(walks):
                 f.write(' '.join([str(layer_id)] + [str(x) for x in walk]) + '\n')
+
+
+def generator(network_data, num_walks, walk_length, schema, data_dir, dataset, window_size, num_workers):
+    if os.path.exists(os.path.join(data_dir, 'walk.txt')):
+        all_walks = load_walk(data_dir=data_dir)
+    else:
+        all_walks = generate_walks(network_data, num_walks, walk_length, schema, data_dir, dataset, num_workers)
+        save_walks(data_dir, all_walks)
+    vocab, index2word = generator_vocab(all_walks)
+    train_pairs = generator_pairs(all_walks, vocab, window_size)
+    # vocab:节点统计信息; index2word:节点; train_pairs:skip-gram训练样本
+    return vocab, index2word, train_pairs
+
+
+def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samples):
+    edge_type_count = len(edge_types)
+    neighbors = [[[] for _ in range(edge_type_count)] for _ in range(num_nodes)]
+    for r in range(edge_type_count):
+        print("Generator neighbors for later", r)
+        g = network_data[edge_types[r]]  # 每个type涉及到的节点
+        for (x, y) in tqdm(g):
+            ix = vocab[x].index  # x对应到的索引
+            iy = vocab[y].index  # y对应到的索引
+            neighbors[ix][r].append(iy)  # 邻居信息
+            neighbors[iy][r].append(ix)
+        for i in range(num_nodes):
+            if len(neighbors[i][r]) == 0:  # 节点在这个类别下，如果没有节点和它连接，邻居就是该节点本身
+                neighbors[i][r] = [i] * neighbor_samples
+            elif len(neighbors[i][r]) < neighbor_samples:  # 如果邻居节点数量小于采样邻居数量，进行重采样
+                neighbors[i][r].extend(
+                    list(np.random.choice(neighbors[i][r], size=neighbor_samples - len(neighbors[i][r]))))
+            elif len(neighbors[i][r]) > neighbor_samples:  # 如果邻居节点数量大于采样邻居数量，进行邻居大小数量的采样
+                neighbors[i][r] = list(np.random.choice(neighbors[i][r], size=neighbor_samples))
+    return neighbors  # 每个节点的邻居采样
 
 
 def load_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
