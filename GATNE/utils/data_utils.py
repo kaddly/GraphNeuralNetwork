@@ -1,10 +1,7 @@
-import math
 import os
 import random
-import pickle
 import tqdm
 from collections import defaultdict
-from six import iteritems
 import torch
 from torch.utils.data import DataLoader, Dataset
 from utils.sample_utils import RWGraph
@@ -144,14 +141,16 @@ def generator_vocab(all_walks):
                 raw_vocab[word] += 1
 
     vocab = {}
-    for word, v in iteritems(raw_vocab):
+    for word, v in raw_vocab:
         vocab[word] = Vocab(count=v, index=len(index2word))  # 用一个类表示节点的次数和index
         index2word.append(word)
     return vocab, index2word
 
 
-def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data')):
-    walk_file = os.path.join(data_dir, 'walk.txt')
+def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt'):
+    walk_file = os.path.join(data_dir, file_name)
+    if not os.path.exists(walk_file):
+        raise FileNotFoundError("please generator walk first!")
     print('Loading walks')
     all_walks = []
     with open(walk_file, 'r') as f:
@@ -164,8 +163,8 @@ def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data')):
     return all_walks
 
 
-def save_walks(data_dir=os.path.join(os.path.abspath('.'), 'data'), all_walks=[]):
-    walk_file = os.path.join(data_dir, 'walk.txt')
+def save_walks(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt', all_walks=[]):
+    walk_file = os.path.join(data_dir, file_name)
     with open(walk_file, 'w') as f:
         for layer_id, walks in enumerate(all_walks):
             print('Saving walks for layer', layer_id)
@@ -207,7 +206,21 @@ def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samp
     return neighbors  # 每个节点的邻居采样
 
 
-def load_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
+def load_data(args, data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
     training_data_by_type = read_train_data(data_dir, dataset)
     valid_true_data_by_edge, valid_false_data_by_edge = read_test_data(data_dir, dataset, file_name='valid.txt')
     testing_true_data_by_edge, testing_false_data_by_edge = read_test_data(data_dir, dataset, file_name='test.txt')
+    if os.path.exists(os.path.join(data_dir, 'train_walks.txt')):
+        train_walks = load_walk(data_dir, file_name='train_walks.txt')
+        val_walks = load_walk(data_dir, file_name='val_walks.txt')
+        test_walks = load_walk(data_dir, file_name='test_walks.txt')
+    else:
+        train_walks = generate_walks(training_data_by_type, args.num_walks, args.walk_length, args.schema, data_dir,
+                                     dataset, args.num_workers)
+        save_walks(data_dir, file_name='train_walks.txt', all_walks=train_walks)
+        val_walks = generate_walks(valid_true_data_by_edge, args.num_walks, args.walk_length, args.schema, data_dir,
+                                   dataset, args.num_workers)
+        save_walks(data_dir, file_name='val_walks.txt', all_walks=val_walks)
+        test_walks = generate_walks(testing_true_data_by_edge, args.num_walks, args.walk_length, args.schema, data_dir,
+                                    dataset, args.num_workers)
+        save_walks(data_dir, file_name='test_walks.txt', all_walks=test_walks)
