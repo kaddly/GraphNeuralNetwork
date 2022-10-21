@@ -163,7 +163,7 @@ def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='tr
     return all_walks
 
 
-def save_walks(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt', all_walks=[]):
+def save_walks(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt', all_walks={}):
     walk_file = os.path.join(data_dir, file_name)
     with open(walk_file, 'w') as f:
         for layer_id, walks in enumerate(all_walks):
