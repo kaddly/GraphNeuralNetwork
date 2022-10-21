@@ -57,7 +57,7 @@ def count_corpus(tokens):
 class HeteroGraph(object):
     def __init__(self, graph_idx=[], edge_types=['_U', '_I'], meta_path=['_U', '_I', '_U'], is_digraph=False,
                  node_frames=None, edge_frames=None):
-        assert len(graph_idx) == len(edge_types)
+        assert len(graph_idx) == len(edge_types) and meta_path[0] == meta_path[-1]
         self.graph_idx = graph_idx
         self.edge_types = edge_types
         self.meta_path = meta_path

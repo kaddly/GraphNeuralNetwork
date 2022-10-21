@@ -124,6 +124,61 @@ def generator_pairs(all_walks, vocab, window_size):
     return pairs  # 所有单词上线文的索引, type
 
 
+def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samples):
+    edge_type_count = len(edge_types)
+    neighbors = [[[] for _ in range(edge_type_count)] for _ in range(num_nodes)]
+    for r in range(edge_type_count):
+        print("Generator neighbors for later", r)
+        g = network_data[edge_types[r]]  # 每个type涉及到的节点
+        for (x, y) in tqdm(g):
+            ix = vocab[x].index  # x对应到的索引
+            iy = vocab[y].index  # y对应到的索引
+            neighbors[ix][r].append(iy)  # 邻居信息
+            neighbors[iy][r].append(ix)
+        for i in range(num_nodes):
+            if len(neighbors[i][r]) == 0:  # 节点在这个类别下，如果没有节点和它连接，邻居就是该节点本身
+                neighbors[i][r] = [i] * neighbor_samples
+            elif len(neighbors[i][r]) < neighbor_samples:  # 如果邻居节点数量小于采样邻居数量，进行重采样
+                neighbors[i][r].extend(
+                    list(random.choices(neighbors[i][r], k=neighbor_samples - len(neighbors[i][r]))))
+            elif len(neighbors[i][r]) > neighbor_samples:  # 如果邻居节点数量大于采样邻居数量，进行邻居大小数量的采样
+                neighbors[i][r] = list(random.sample(neighbors[i][r], k=neighbor_samples))
+    return neighbors  # 每个节点的邻居采样
+
+
+class MulEdgeDataset(Dataset):
+    def __init__(self, **kwargs):
+        super(MulEdgeDataset, self).__init__(**kwargs)
+
+    def __getitem__(self, item):
+        pass
+
+    def __len__(self):
+        pass
+
+
+def load_data(args, data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
+    training_data_by_type = read_train_data(data_dir, dataset)
+    valid_true_data_by_edge, valid_false_data_by_edge = read_test_data(data_dir, dataset, file_name='valid.txt')
+    testing_true_data_by_edge, testing_false_data_by_edge = read_test_data(data_dir, dataset, file_name='test.txt')
+    features = read_feature(data_dir, dataset)
+    if os.path.exists(os.path.join(data_dir, 'train_walks.txt')):
+        train_walks = load_walk(data_dir, file_name='train_walks.txt')
+        val_walks = load_walk(data_dir, file_name='val_walks.txt')
+        test_walks = load_walk(data_dir, file_name='test_walks.txt')
+    else:
+        train_walks = generate_walks(training_data_by_type, args.num_walks, args.walk_length, args.schema, data_dir,
+                                     dataset, args.num_workers)
+        save_walks(data_dir, file_name='train_walks.txt', all_walks=train_walks)
+        val_walks = generate_walks(valid_true_data_by_edge, args.num_walks, args.walk_length, args.schema, data_dir,
+                                   dataset, args.num_workers)
+        save_walks(data_dir, file_name='val_walks.txt', all_walks=val_walks)
+        test_walks = generate_walks(testing_true_data_by_edge, args.num_walks, args.walk_length, args.schema, data_dir,
+                                    dataset, args.num_workers)
+        save_walks(data_dir, file_name='test_walks.txt', all_walks=test_walks)
+    vocab = Vocab(train_walks, min_freq=4)
+
+
 def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt'):
     walk_file = os.path.join(data_dir, file_name)
     if not os.path.exists(walk_file):
@@ -147,46 +202,3 @@ def save_walks(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='t
             print('Saving walks for layer', layer_id)
             for walk in tqdm(walks):
                 f.write(' '.join([str(layer_id)] + [str(x) for x in walk]) + '\n')
-
-
-def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samples):
-    edge_type_count = len(edge_types)
-    neighbors = [[[] for _ in range(edge_type_count)] for _ in range(num_nodes)]
-    for r in range(edge_type_count):
-        print("Generator neighbors for later", r)
-        g = network_data[edge_types[r]]  # 每个type涉及到的节点
-        for (x, y) in tqdm(g):
-            ix = vocab[x].index  # x对应到的索引
-            iy = vocab[y].index  # y对应到的索引
-            neighbors[ix][r].append(iy)  # 邻居信息
-            neighbors[iy][r].append(ix)
-        for i in range(num_nodes):
-            if len(neighbors[i][r]) == 0:  # 节点在这个类别下，如果没有节点和它连接，邻居就是该节点本身
-                neighbors[i][r] = [i] * neighbor_samples
-            elif len(neighbors[i][r]) < neighbor_samples:  # 如果邻居节点数量小于采样邻居数量，进行重采样
-                neighbors[i][r].extend(
-                    list(random.choices(neighbors[i][r], k=neighbor_samples - len(neighbors[i][r]))))
-            elif len(neighbors[i][r]) > neighbor_samples:  # 如果邻居节点数量大于采样邻居数量，进行邻居大小数量的采样
-                neighbors[i][r] = list(random.sample(neighbors[i][r], k=neighbor_samples))
-    return neighbors  # 每个节点的邻居采样
-
-
-def load_data(args, data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
-    training_data_by_type = read_train_data(data_dir, dataset)
-    valid_true_data_by_edge, valid_false_data_by_edge = read_test_data(data_dir, dataset, file_name='valid.txt')
-    testing_true_data_by_edge, testing_false_data_by_edge = read_test_data(data_dir, dataset, file_name='test.txt')
-    if os.path.exists(os.path.join(data_dir, 'train_walks.txt')):
-        train_walks = load_walk(data_dir, file_name='train_walks.txt')
-        val_walks = load_walk(data_dir, file_name='val_walks.txt')
-        test_walks = load_walk(data_dir, file_name='test_walks.txt')
-    else:
-        train_walks = generate_walks(training_data_by_type, args.num_walks, args.walk_length, args.schema, data_dir,
-                                     dataset, args.num_workers)
-        save_walks(data_dir, file_name='train_walks.txt', all_walks=train_walks)
-        val_walks = generate_walks(valid_true_data_by_edge, args.num_walks, args.walk_length, args.schema, data_dir,
-                                   dataset, args.num_workers)
-        save_walks(data_dir, file_name='val_walks.txt', all_walks=val_walks)
-        test_walks = generate_walks(testing_true_data_by_edge, args.num_walks, args.walk_length, args.schema, data_dir,
-                                    dataset, args.num_workers)
-        save_walks(data_dir, file_name='test_walks.txt', all_walks=test_walks)
-    vocab = Vocab(train_walks, min_freq=4)
