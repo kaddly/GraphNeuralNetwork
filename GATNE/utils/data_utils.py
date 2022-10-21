@@ -5,6 +5,7 @@ from collections import defaultdict
 import torch
 from torch.utils.data import DataLoader, Dataset
 from utils.sample_utils import RWGraph
+from utils.graph_utils import Vocab
 
 
 def read_train_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
@@ -123,30 +124,6 @@ def generator_pairs(all_walks, vocab, window_size):
     return pairs  # 所有单词上线文的索引, type
 
 
-class Vocab(object):
-
-    def __init__(self, count, index):
-        self.count = count
-        self.index = index
-
-
-def generator_vocab(all_walks):
-    index2word = []
-    raw_vocab = defaultdict(int)
-    # 随机游走每个单词出现的次数
-    for layer_id, walks in enumerate(all_walks):  # 按照type类别
-        print('Counting vocab for layer', layer_id)
-        for walk in tqdm(walks):
-            for word in walk:  # 记录每个单词出现的次数
-                raw_vocab[word] += 1
-
-    vocab = {}
-    for word, v in raw_vocab:
-        vocab[word] = Vocab(count=v, index=len(index2word))  # 用一个类表示节点的次数和index
-        index2word.append(word)
-    return vocab, index2word
-
-
 def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt'):
     walk_file = os.path.join(data_dir, file_name)
     if not os.path.exists(walk_file):
@@ -170,18 +147,6 @@ def save_walks(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='t
             print('Saving walks for layer', layer_id)
             for walk in tqdm(walks):
                 f.write(' '.join([str(layer_id)] + [str(x) for x in walk]) + '\n')
-
-
-def generator(network_data, num_walks, walk_length, schema, data_dir, dataset, window_size, num_workers):
-    if os.path.exists(os.path.join(data_dir, 'walk.txt')):
-        all_walks = load_walk(data_dir=data_dir)
-    else:
-        all_walks = generate_walks(network_data, num_walks, walk_length, schema, data_dir, dataset, num_workers)
-        save_walks(data_dir, all_walks)
-    vocab, index2word = generator_vocab(all_walks)
-    train_pairs = generator_pairs(all_walks, vocab, window_size)
-    # vocab:节点统计信息; index2word:节点; train_pairs:skip-gram训练样本
-    return vocab, index2word, train_pairs
 
 
 def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samples):
@@ -224,3 +189,4 @@ def load_data(args, data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset
         test_walks = generate_walks(testing_true_data_by_edge, args.num_walks, args.walk_length, args.schema, data_dir,
                                     dataset, args.num_workers)
         save_walks(data_dir, file_name='test_walks.txt', all_walks=test_walks)
+    vocab = Vocab(train_walks, min_freq=4)

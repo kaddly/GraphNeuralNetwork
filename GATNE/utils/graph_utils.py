@@ -49,7 +49,7 @@ class Vocab:
 def count_corpus(tokens):
     """统计词元的频率"""
     # 这里的tokens是1d或者2d列表
-    if len(tokens) == 0 or isinstance(tokens[0], list):
+    while len(tokens) == 0 or isinstance(tokens[0], list):
         tokens = [token for line in tokens for token in line]
     return collections.Counter(tokens)
 
