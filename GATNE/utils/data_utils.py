@@ -1,11 +1,12 @@
 import os
 import random
 import tqdm
+import math
 from collections import defaultdict
 import torch
 from torch.utils.data import DataLoader, Dataset
 from utils.sample_utils import RWGraph
-from utils.graph_utils import Vocab
+from utils.graph_utils import Vocab, count_corpus
 
 
 def read_train_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
@@ -109,6 +110,39 @@ def generate_walks(network_data, num_walks, walk_length, schema, data_dir=os.pat
     return all_walks
 
 
+def subsample(sentences, vocab=None):
+    """下采样高频词"""
+    sentences = [lines for lines in sentences]
+    if vocab is not None:
+        # 排除未知词元'<UNK>'
+        sentences = [[token for token in line if vocab[token] != vocab.unk] for line in sentences]
+    counter = count_corpus(sentences)
+    num_tokens = sum(counter.values())
+
+    # 如果在下采样期间保留词元，则返回True
+    def keep(token):
+        return random.randint(0, 1) < math.sqrt(1e-4 / counter[token] * num_tokens)
+
+    return [[token for token in line if keep(token)] for line in sentences], counter
+
+
+def get_centers_and_contexts(corpus, max_window_size):
+    """返回跳元模型中的中心词与上下文单词"""
+    centers, context = [], []
+    for line in corpus:
+        # 形成“中心词-上下文词”对，每个句子至少需要两个单词
+        if len(line) < 2:
+            continue
+        centers += line
+        for i in range(len(line)):
+            window_size = random.randint(1, max_window_size)
+            indices = list(range(max(0, i - window_size), min(len(line), i + 1 + window_size)))
+            # 从上下文词中排除中心词
+            indices.remove(i)
+            context.append([line[idx] for idx in indices])
+    return centers, context
+
+
 def generator_pairs(all_walks, vocab, window_size):
     pairs = []
     skip_window = window_size // 2
@@ -147,17 +181,19 @@ def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samp
 
 
 class MulEdgeDataset(Dataset):
-    def __init__(self, **kwargs):
+    def __init__(self, data_set, vocab, max_window_size, **kwargs):
         super(MulEdgeDataset, self).__init__(**kwargs)
+        subsampled, counter = subsample(data_set, vocab)
+        self.all_centers, self.all_contexts = get_centers_and_contexts(subsampled, max_window_size)
 
     def __getitem__(self, item):
         pass
 
     def __len__(self):
-        pass
+        return len(self.all_centers)
 
 
-def load_data(args, data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
+def load_data(args,max_window_size, data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
     training_data_by_type = read_train_data(data_dir, dataset)
     valid_true_data_by_edge, valid_false_data_by_edge = read_test_data(data_dir, dataset, file_name='valid.txt')
     testing_true_data_by_edge, testing_false_data_by_edge = read_test_data(data_dir, dataset, file_name='test.txt')
