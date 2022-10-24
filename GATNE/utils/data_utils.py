@@ -119,9 +119,9 @@ def generator_pairs(all_walks, vocab, window_size):
             for i in range(len(walk)):  # 每个单词循环
                 for j in range(1, skip_window + 1):  # 向前向后的窗口长度
                     if i - j >= 0:
-                        pairs.append((vocab[walk[i]].index, vocab[walk[i - j]].index, layer_id))  # 向前窗口涉及到的单词
+                        pairs.append((vocab[walk[i]], vocab[walk[i - j]], layer_id))  # 向前窗口涉及到的单词
                     if i + j < len(walk):
-                        pairs.append((vocab[walk[i]].index, vocab[walk[i + j]].index, layer_id))  # 向后窗口涉及到的单词
+                        pairs.append((vocab[walk[i]], vocab[walk[i + j]], layer_id))  # 向后窗口涉及到的单词
     return pairs  # 所有单词上线文的索引, type
 
 
@@ -148,8 +148,10 @@ def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samp
 
 
 class MulEdgeDataset(Dataset):
-    def __init__(self, data_set, vocab, max_window_size, **kwargs):
+    def __init__(self, data_set: dict, vocab, max_window_size, neighbor_samples, **kwargs):
         super(MulEdgeDataset, self).__init__(**kwargs)
+        self.pair = generator_pairs(data_set, vocab, max_window_size)
+        self.neighbors = generator_neighbor(data_set, vocab, len(vocab), list(data_set.keys()), neighbor_samples)
 
     def __getitem__(self, item):
         pass
