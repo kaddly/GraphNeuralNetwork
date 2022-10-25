@@ -1,12 +1,11 @@
 import os
 import random
-import tqdm
-import math
+from tqdm import tqdm
 from collections import defaultdict
 import torch
 from torch.utils.data import DataLoader, Dataset
 from utils.sample_utils import RWGraph
-from utils.graph_utils import Vocab, count_corpus
+from utils.graph_utils import Vocab
 
 
 def read_train_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
@@ -154,32 +153,29 @@ class MulEdgeDataset(Dataset):
         self.neighbors = generator_neighbor(data_set, vocab, len(vocab), list(data_set.keys()), neighbor_samples)
 
     def __getitem__(self, item):
-        pass
+        return torch.tensor(self.pair[item][0]), torch.tensor(self.pair[item][1]), torch.tensor(
+            self.pair[item][2]), torch.tensor(self.neighbors[self.pair[item][0]])
 
     def __len__(self):
-        return len(self.all_centers)
+        return len(self.pair)
 
 
-def load_data(args, max_window_size, data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
-    training_data_by_type = read_train_data(data_dir, dataset)
-    valid_true_data_by_edge, valid_false_data_by_edge = read_test_data(data_dir, dataset, file_name='valid.txt')
-    testing_true_data_by_edge, testing_false_data_by_edge = read_test_data(data_dir, dataset, file_name='test.txt')
-    features = read_feature(data_dir, dataset)
-    if os.path.exists(os.path.join(data_dir, 'train_walks.txt')):
-        train_walks = load_walk(data_dir, file_name='train_walks.txt')
-        val_walks = load_walk(data_dir, file_name='val_walks.txt')
-        test_walks = load_walk(data_dir, file_name='test_walks.txt')
+def load_data(args):
+    training_data_by_type = read_train_data(args.data_dir, args.dataset)
+    valid_true_data_by_edge, valid_false_data_by_edge = read_test_data(args.data_dir, args.dataset, file_name='valid.txt')
+    testing_true_data_by_edge, testing_false_data_by_edge = read_test_data(args.data_dir, args.dataset, file_name='test.txt')
+    features = read_feature(args.data_dir, args.dataset)
+    if os.path.exists(os.path.join(args.data_dir, 'train_walks.txt')):
+        train_walks = load_walk(args.data_dir, file_name='train_walks.txt')
     else:
-        train_walks = generate_walks(training_data_by_type, args.num_walks, args.walk_length, args.schema, data_dir,
-                                     dataset, args.num_workers)
-        save_walks(data_dir, file_name='train_walks.txt', all_walks=train_walks)
-        val_walks = generate_walks(valid_true_data_by_edge, args.num_walks, args.walk_length, args.schema, data_dir,
-                                   dataset, args.num_workers)
-        save_walks(data_dir, file_name='val_walks.txt', all_walks=val_walks)
-        test_walks = generate_walks(testing_true_data_by_edge, args.num_walks, args.walk_length, args.schema, data_dir,
-                                    dataset, args.num_workers)
-        save_walks(data_dir, file_name='test_walks.txt', all_walks=test_walks)
+        train_walks = generate_walks(training_data_by_type, args.num_walks, args.walk_length, args.schema, args.data_dir,
+                                     args.dataset, args.num_workers)
+        save_walks(args.data_dir, file_name='train_walks.txt', all_walks=train_walks)
     vocab = Vocab(train_walks, min_freq=4)
+    train_dataset = MulEdgeDataset(train_walks, vocab, args.window_size, args.neighbor_samples)
+    train_iter = DataLoader(train_dataset, batch_size=args.num_batch, shuffle=True)
+    return train_iter, vocab, valid_true_data_by_edge, valid_false_data_by_edge, \
+           testing_true_data_by_edge, testing_false_data_by_edge, features
 
 
 def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt'):

@@ -1,6 +1,6 @@
 import random
 from joblib import Parallel, delayed
-import tqdm
+from tqdm import tqdm
 import itertools
 
 
@@ -22,21 +22,20 @@ class RWGraph:
 
         if schema is None:
             results = Parallel(n_jobs=workers, verbose=verbose)(
-                delayed(self.walk)(walk_length, node, '') for node in tqdm(self.node_list(nodes, num_walks)))
+                delayed(self._simulate_walks)(walk_length, node, '') for node in tqdm(self.node_list(nodes, num_walks)))
             all_walks = list(itertools.chain(*results))
         else:
             schema_list = schema.split(',')
             for schema_iter in schema_list:
                 results = Parallel(n_jobs=workers, verbose=verbose)(
-                    delayed(self.walk)(walk_length, node, schema_iter) for node in tqdm(self.node_list(nodes, num_walks)) if
+                    delayed(self._simulate_walks)(walk_length, node, schema_iter) for node in tqdm(self.node_list(nodes, num_walks)) if
                     schema_iter.split('-')[0] == self.node_type[node])
                 walks = list(itertools.chain(*results))
                 all_walks.extend(walks)
 
         return all_walks
 
-    def walk(self, args):
-        walk_length, start, schema = args
+    def _simulate_walks(self, walk_length, start, schema):
         # Simulate a random walk starting from start node.
         rand = random.Random()
 
