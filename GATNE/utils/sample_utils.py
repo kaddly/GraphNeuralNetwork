@@ -1,7 +1,6 @@
 import random
 from joblib import Parallel, delayed
 from tqdm import tqdm
-import itertools
 
 
 class RWGraph:
@@ -21,16 +20,14 @@ class RWGraph:
         random.shuffle(nodes)
 
         if schema is None:
-            results = Parallel(n_jobs=workers, verbose=verbose)(
+            all_walks = Parallel(n_jobs=workers, verbose=verbose)(
                 delayed(self._simulate_walks)(walk_length, node, '') for node in tqdm(self.node_list(nodes, num_walks)))
-            all_walks = list(itertools.chain(*results))
         else:
             schema_list = schema.split(',')
             for schema_iter in schema_list:
-                results = Parallel(n_jobs=workers, verbose=verbose)(
+                walks = Parallel(n_jobs=workers, verbose=verbose)(
                     delayed(self._simulate_walks)(walk_length, node, schema_iter) for node in tqdm(self.node_list(nodes, num_walks)) if
                     schema_iter.split('-')[0] == self.node_type[node])
-                walks = list(itertools.chain(*results))
                 all_walks.extend(walks)
 
         return all_walks

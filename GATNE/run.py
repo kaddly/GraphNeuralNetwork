@@ -27,7 +27,7 @@ def parse_args():
 
     parser.add_argument('--neighbor-samples', type=int, default=10,
                         help='Neighbor samples for aggregation. Default is 10.')
-    parser.add_argument('--num-workers', type=int, default=2,
+    parser.add_argument('--num-workers', type=int, default=4,
                         help='Number of workers for generating random walks. Default is 16.')
     parser.add_argument("--device", default="cuda", help="training device")
     parser.add_argument('--lr', type=float, default=0.4, help='learning rate')
