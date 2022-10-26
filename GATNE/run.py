@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument('--walk-length', type=int, default=10,
                         help='Length of walk per source. Default is 10.')
 
-    parser.add_argument('--num-walks', type=int, default=20,
+    parser.add_argument('--num-walks', type=int, default=10,
                         help='Number of walks per source. Default is 20.')
 
     parser.add_argument('--window-size', type=int, default=5,
@@ -27,7 +27,7 @@ def parse_args():
 
     parser.add_argument('--neighbor-samples', type=int, default=10,
                         help='Neighbor samples for aggregation. Default is 10.')
-    parser.add_argument('--num-workers', type=int, default=16,
+    parser.add_argument('--num-workers', type=int, default=2,
                         help='Number of workers for generating random walks. Default is 16.')
     parser.add_argument("--device", default="cuda", help="training device")
     parser.add_argument('--lr', type=float, default=0.4, help='learning rate')

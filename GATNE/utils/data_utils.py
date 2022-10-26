@@ -131,8 +131,8 @@ def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samp
         print("Generator neighbors for later", r)
         g = network_data[edge_types[r]]  # 每个type涉及到的节点
         for (x, y) in tqdm(g):
-            ix = vocab[x].index  # x对应到的索引
-            iy = vocab[y].index  # y对应到的索引
+            ix = vocab[x]  # x对应到的索引
+            iy = vocab[y]  # y对应到的索引
             neighbors[ix][r].append(iy)  # 邻居信息
             neighbors[iy][r].append(ix)
         for i in range(num_nodes):
@@ -147,9 +147,9 @@ def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samp
 
 
 class MulEdgeDataset(Dataset):
-    def __init__(self, data_set: dict, vocab, max_window_size, neighbor_samples, **kwargs):
+    def __init__(self, data_set: dict, all_walks, vocab, max_window_size, neighbor_samples, **kwargs):
         super(MulEdgeDataset, self).__init__(**kwargs)
-        self.pair = generator_pairs(data_set, vocab, max_window_size)
+        self.pair = generator_pairs(all_walks, vocab, max_window_size)
         self.neighbors = generator_neighbor(data_set, vocab, len(vocab), list(data_set.keys()), neighbor_samples)
 
     def __getitem__(self, item):
@@ -162,17 +162,20 @@ class MulEdgeDataset(Dataset):
 
 def load_data(args):
     training_data_by_type = read_train_data(args.data_dir, args.dataset)
-    valid_true_data_by_edge, valid_false_data_by_edge = read_test_data(args.data_dir, args.dataset, file_name='valid.txt')
-    testing_true_data_by_edge, testing_false_data_by_edge = read_test_data(args.data_dir, args.dataset, file_name='test.txt')
+    valid_true_data_by_edge, valid_false_data_by_edge = read_test_data(args.data_dir, args.dataset,
+                                                                       file_name='valid.txt')
+    testing_true_data_by_edge, testing_false_data_by_edge = read_test_data(args.data_dir, args.dataset,
+                                                                           file_name='test.txt')
     features = read_feature(args.data_dir, args.dataset)
     if os.path.exists(os.path.join(args.data_dir, 'train_walks.txt')):
         train_walks = load_walk(args.data_dir, file_name='train_walks.txt')
     else:
-        train_walks = generate_walks(training_data_by_type, args.num_walks, args.walk_length, args.schema, args.data_dir,
+        train_walks = generate_walks(training_data_by_type, args.num_walks, args.walk_length, args.schema,
+                                     args.data_dir,
                                      args.dataset, args.num_workers)
         save_walks(args.data_dir, file_name='train_walks.txt', all_walks=train_walks)
     vocab = Vocab(train_walks, min_freq=4)
-    train_dataset = MulEdgeDataset(train_walks, vocab, args.window_size, args.neighbor_samples)
+    train_dataset = MulEdgeDataset(training_data_by_type, train_walks, vocab, args.window_size, args.neighbor_samples)
     train_iter = DataLoader(train_dataset, batch_size=args.num_batch, shuffle=True)
     return train_iter, vocab, valid_true_data_by_edge, valid_false_data_by_edge, \
            testing_true_data_by_edge, testing_false_data_by_edge, features
