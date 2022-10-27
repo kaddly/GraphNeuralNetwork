@@ -44,3 +44,4 @@ if __name__ == '__main__':
     args = parse_args()
     train_iter, vocab, valid_true_data_by_edge, valid_false_data_by_edge, testing_true_data_by_edge, testing_false_data_by_edge, features = load_data(
         args)
+    GATNEModel(len(vocab))
