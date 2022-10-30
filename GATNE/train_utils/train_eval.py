@@ -9,6 +9,10 @@ from .scale_utils import accuracy, f_beta_score, recall
 from .distributed_utils import Accumulator
 
 
+def val_eval(net, edge_type, edge_type_count):
+    pass
+
+
 def train(net, loss, train_iter, val_iter, args):
     # 模型参数保存路径
     parameter_path = os.path.join(args.model_dict_path, args.model)
