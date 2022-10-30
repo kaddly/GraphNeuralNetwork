@@ -31,3 +31,17 @@ def train(net, loss, train_iter, val_iter, args):
     last_improve = 0  # 记录上次验证集loss下降的batch数
     flag = False  # 记录是否很久没有效果提升
     metric = Accumulator(5)
+
+    for epoch in range(args.num_epoch):
+        metric.reset()
+        print('Epoch [{}/{}]'.format(epoch + 1, args.num_epoch))
+        for i, batch in enumerate(train_iter):
+            optimizer.zero_grad()
+            center, context, types, neigh = [data.to(device) for data in batch]
+            emb = net(center, types, neigh)
+            train_loss = loss(center, emb, context)
+            train_loss.backward()
+            optimizer.step()
+            if args.scheduler_lr:
+                lr_scheduler.step()
+

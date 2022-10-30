@@ -153,6 +153,7 @@ class MulEdgeDataset(Dataset):
         self.neighbors = generator_neighbor(data_set, vocab, len(vocab), list(data_set.keys()), neighbor_samples)
 
     def __getitem__(self, item):
+        # center, context, types, neigh
         return torch.tensor(self.pair[item][0]), torch.tensor(self.pair[item][1]), torch.tensor(
             self.pair[item][2]), torch.tensor(self.neighbors[self.pair[item][0]])
 
