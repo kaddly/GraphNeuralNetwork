@@ -30,7 +30,7 @@ def train(net, loss, train_iter, val_iter, args):
     best_loss = float('inf')
     last_improve = 0  # 记录上次验证集loss下降的batch数
     flag = False  # 记录是否很久没有效果提升
-    metric = Accumulator(5)
+    metric = Accumulator(2)
 
     for epoch in range(args.num_epoch):
         metric.reset()
@@ -44,4 +44,22 @@ def train(net, loss, train_iter, val_iter, args):
             optimizer.step()
             if args.scheduler_lr:
                 lr_scheduler.step()
+            with torch.no_grad():
+                metric.add(train_loss.item(), i)
+            if total_batch % args.print_freq == 0:
+                net.eval()
+                lr_current = optimizer.param_groups[0]["lr"]
+                if train_loss < best_loss:
+                    torch.save(net.state_dict(), os.path.join(parameter_path, args.model + '.ckpt'))
+                    best_loss = train_loss
+                    improve = '*'
+                    last_improve = total_batch
+                else:
+                    improve = ''
+                time_dif = timedelta(seconds=int(round(time.time() - start_time)))
+                msg = 'Iter: {0:>6},  Train Loss: {1:>5.4},  Train lr: {2:>5.4},  val loss: {3:>5.4},  val Acc: {4:>6.2%},  val recall: {5:6.2%},  val f1 score: {6:6.2%},  Time: {7} {8}'
+                print(msg.format(total_batch, metric[0] / metric[1], lr_current, time_dif, improve))
+                net.train()
+
+
 

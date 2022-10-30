@@ -63,6 +63,7 @@ def train(net, data_iter, args):
                            recall(pred.reshape(-1), label.reshape(-1), 2, mask.reshape(-1)).mean(),
                            f_beta_score(pred.reshape(-1), label.reshape(-1), 2, mask.reshape(-1)).mean(), label.shape[0])
             if total_batch % args.print_freq == 0:
+                net.eval()
                 lr_current = optimizer.param_groups[0]["lr"]
                 if train_loss < best_loss:
                     torch.save(net.state_dict(), os.path.join(parameter_path, args.model + '.ckpt'))
