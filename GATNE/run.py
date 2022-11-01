@@ -1,7 +1,7 @@
 import os
 from models import GATNEModel
 from utils import load_data
-from train_utils import train, NSLoss
+from train_utils import train, NSLoss, ValScale
 
 
 def parse_args():
@@ -57,8 +57,9 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    train_iter, vocab, training_data_by_type, valid_true_data_by_edge, valid_false_data_by_edge, testing_true_data_by_edge, testing_false_data_by_edge, features = load_data(
+    train_iter, vocab, training_data_by_type, neighbors, valid_true_data_by_edge, valid_false_data_by_edge, testing_true_data_by_edge, testing_false_data_by_edge, features = load_data(
         args)
     net = GATNEModel(len(vocab), args.dimensions, args.edge_dim, len(training_data_by_type), args.dim_a, features)
     loss = NSLoss(len(vocab), args.negative_samples, args.dimensions)
-    train(net, loss, train_iter, (valid_true_data_by_edge, valid_false_data_by_edge), args)
+    val_scale = ValScale(len(vocab), list(training_data_by_type.keys()), len(training_data_by_type), neighbors, vocab)
+    train(net, loss, train_iter, val_scale, (valid_true_data_by_edge, valid_false_data_by_edge), args)

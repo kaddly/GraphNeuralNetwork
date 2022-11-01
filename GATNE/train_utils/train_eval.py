@@ -38,26 +38,51 @@ def evaluate(model, true_edges, false_edges):
 
     y_true = torch.Tensor(true_list)  # true label
     y_scores = torch.Tensor(prediction_list)  # predict proba
-    return accuracy(y_scores, y_true, 2), f_beta_score(y_scores, y_true, 2), recall(y_scores, y_true, 2)
+    return F.cross_entropy(y_scores, y_true), accuracy(y_scores, y_true, 2), f_beta_score(y_scores, y_true, 2), recall(y_scores, y_true, 2)
 
 
-def val_eval(model, num_nodes, edge_types, edge_type_count, neighbors, device, vocab):
-    final_model = dict(zip(edge_types, [dict() for _ in range(edge_type_count)]))  # 每个类别下节点的embedding;
-    for i in range(num_nodes):
-        train_inputs = torch.tensor([i for _ in range(edge_type_count)]).to(device)  # 节点的多个类别，求每个类别下的embedding
-        train_types = torch.tensor(list(range(edge_type_count))).to(device)
-        node_neigh = torch.tensor(  # 节点在每个类别下的neighbors
-            [neighbors[i] for _ in range(edge_type_count)]
-        ).to(device)
-        node_emb = model(train_inputs, train_types,
-                         node_neigh)  # [node1, node1]; [type1, type2]; [node1_neigh, node1_neigh]
-        for j in range(edge_type_count):  # 每个节点在各个类别下的embedding
-            final_model[edge_types[j]][vocab.to_tokens[i]] = (
-                node_emb[j].cpu().detach().numpy()
-            )
+class ValScale:
+    def __init__(self, num_nodes, edge_types, edge_type_count, neighbors, vocab):
+        self.num_nodes = num_nodes
+        self.edge_types = edge_types
+        self.edge_type_count = edge_type_count
+        self.neighbors = neighbors
+        self.vocab = vocab
+
+    def get_model(self, model, device):
+        final_model = dict(zip(self.edge_types, [dict() for _ in range(self.edge_type_count)]))  # 每个类别下节点的embedding;
+        for i in range(self.num_nodes):
+            train_inputs = torch.tensor([i for _ in range(self.edge_type_count)]).to(device)  # 节点的多个类别，求每个类别下的embedding
+            train_types = torch.tensor(list(range(self.edge_type_count))).to(device)
+            node_neigh = torch.tensor(  # 节点在每个类别下的neighbors
+                [self.neighbors[i] for _ in range(self.edge_type_count)]
+            ).to(device)
+            node_emb = model(train_inputs, train_types,
+                             node_neigh)  # [node1, node1]; [type1, type2]; [node1_neigh, node1_neigh]
+            for j in range(self.edge_type_count):  # 每个节点在各个类别下的embedding
+                final_model[self.edge_types[j]][self.vocab.to_tokens[i]] = (
+                    node_emb[j].cpu().detach().numpy()
+                )
+        return final_model
+
+    def val_eval(self, model, device, valid_true_data_by_edge, valid_false_data_by_edge, args):
+        final_model = self.get_model(model, device)
+        valid_loss, valid_auc, valid_f1, valid_rcl = [], [], [], []
+        for i in range(self.edge_type_count):
+            if args.eval_type == "all" or self.edge_types[i] in args.eval_type.split(","):
+                tmp_loss, tmp_auc, tmp_f1, tmp_rcl = evaluate(
+                    final_model[self.edge_types[i]],
+                    valid_true_data_by_edge[self.edge_types[i]],
+                    valid_false_data_by_edge[self.edge_types[i]],
+                )
+                valid_loss.append(tmp_loss)
+                valid_auc.append(tmp_auc)
+                valid_f1.append(tmp_f1)
+                valid_rcl.append(tmp_rcl)
+        return np.mean(valid_loss), np.mean(valid_auc), np.mean(valid_f1), np.mean(valid_rcl)
 
 
-def train(net, loss, train_iter, val_iter, args):
+def train(net, loss, train_iter, val_scale: ValScale, val_iter, args):
     # 模型参数保存路径
     parameter_path = os.path.join(args.model_dict_path, args.model)
     if not os.path.exists(parameter_path):
@@ -98,9 +123,10 @@ def train(net, loss, train_iter, val_iter, args):
             if total_batch % args.print_freq == 0:
                 net.eval()
                 lr_current = optimizer.param_groups[0]["lr"]
-                if train_loss < best_loss:
+                valid_loss, valid_auc, valid_f1, valid_rcl = val_scale.val_eval(net, device, *val_iter, args)
+                if valid_loss < best_loss:
                     torch.save(net.state_dict(), os.path.join(parameter_path, args.model + '.ckpt'))
-                    best_loss = train_loss
+                    best_loss = valid_loss
                     improve = '*'
                     last_improve = total_batch
                 else:

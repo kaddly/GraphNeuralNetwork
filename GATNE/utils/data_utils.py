@@ -178,7 +178,7 @@ def load_data(args):
     vocab = Vocab(train_walks, min_freq=4)
     train_dataset = MulEdgeDataset(training_data_by_type, train_walks, vocab, args.window_size, args.neighbor_samples)
     train_iter = DataLoader(train_dataset, batch_size=args.num_batch, shuffle=True)
-    return train_iter, vocab, training_data_by_type, valid_true_data_by_edge, valid_false_data_by_edge, testing_true_data_by_edge, testing_false_data_by_edge, features
+    return train_iter, vocab, training_data_by_type, train_dataset.neighbors, valid_true_data_by_edge, valid_false_data_by_edge, testing_true_data_by_edge, testing_false_data_by_edge, features
 
 
 def load_walk(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt'):
