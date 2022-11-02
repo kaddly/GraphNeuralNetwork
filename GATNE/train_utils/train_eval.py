@@ -38,8 +38,10 @@ def evaluate(model, true_edges, false_edges):
 
     y_true = torch.Tensor(true_list)  # true label
     y_scores = torch.Tensor(prediction_list)  # predict proba
-    return F.binary_cross_entropy_with_logits(y_scores, y_true), accuracy(y_scores, y_true, 2), f_beta_score(y_scores, y_true, 2), recall(
-        y_scores, y_true, 2)
+    return F.binary_cross_entropy_with_logits(y_scores, y_true), accuracy(y_scores, y_true, 2), f_beta_score(y_scores,
+                                                                                                             y_true,
+                                                                                                             2).mean(), recall(
+        y_scores, y_true, 2).mean()
 
 
 class ValScale:
@@ -76,10 +78,10 @@ class ValScale:
                     valid_true_data_by_edge[self.edge_types[i]],
                     valid_false_data_by_edge[self.edge_types[i]],
                 )
-                valid_loss.append(tmp_loss)
-                valid_acc.append(tmp_auc)
-                valid_f1.append(tmp_f1)
-                valid_rcl.append(tmp_rcl)
+                valid_loss.append(tmp_loss.item())
+                valid_acc.append(tmp_auc.item())
+                valid_f1.append(tmp_f1.item())
+                valid_rcl.append(tmp_rcl.item())
         return np.mean(valid_loss), np.mean(valid_acc), np.mean(valid_f1), np.mean(valid_rcl)
 
 
@@ -120,7 +122,7 @@ def train(net, loss, train_iter, val_scale: ValScale, val_iter, args):
             if args.scheduler_lr:
                 lr_scheduler.step()
             with torch.no_grad():
-                metric.add(train_loss.item(), i)
+                metric.add(train_loss.item(), i + 1)
             if total_batch % args.print_freq == 0:
                 net.eval()
                 lr_current = optimizer.param_groups[0]["lr"]
@@ -133,10 +135,11 @@ def train(net, loss, train_iter, val_scale: ValScale, val_iter, args):
                 else:
                     improve = ''
                 time_dif = timedelta(seconds=int(round(time.time() - start_time)))
-                msg = 'Iter: {0:>6},  Train Loss: {1:>5.4},  Train lr: {2:>5.4},  val loss: {3:>5.4},  val Acc: {4:>6.2%},  val recall: {5:6.2%},  val f1 score: {6:6.2%},  Time: {7} {8}'
+                msg = 'Iter: {0},  Train Loss: {1:>5.4},  Train lr: {2:>5.4},  val loss: {3:>5.4},  val Acc: {4:>6.2%},  val recall: {5:6.2%},  val f1 score: {6:6.2%},  Time: {7} {8}'
                 print(msg.format(total_batch, metric[0] / metric[1], lr_current, valid_loss, valid_acc, valid_rcl,
                                  valid_f1, time_dif, improve))
                 net.train()
+            total_batch += 1
             if total_batch - last_improve > args.Max_auto_stop_epoch:
                 # 验证集loss超过1000batch没下降，结束训练
                 print("No optimization for a long time, auto-stopping...")

@@ -51,7 +51,7 @@ def parse_args():
     parser.add_argument('--is_current_train', type=bool, default=True, help='use current trained weight')
     parser.add_argument('--print_freq', type=int, default=20, help='print val result frequent')
     parser.add_argument('--Max_auto_stop_epoch', type=int, default=5000)
-    parser.add_argument('--scheduler_lr', type=bool, default=True, help='create learning rate scheduler')
+    parser.add_argument('--scheduler_lr', type=bool, default=False, help='create learning rate scheduler')
     return parser.parse_args()
 
 
