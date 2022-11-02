@@ -32,7 +32,7 @@ def true_positive(pred, target, num_classes, mask=None):
         pred = pred > 0.5
     out = []
     if mask is None:
-        mask = torch.ones(pred.shape)
+        mask = torch.ones(pred.shape).type(torch.bool)
     for i in range(num_classes):
         out.append((((pred == i) & (target == i)) & mask).sum())
 
@@ -55,7 +55,7 @@ def true_negative(pred, target, num_classes, mask=None):
         pred = pred > 0.5
     out = []
     if mask is None:
-        mask = torch.ones(pred.shape)
+        mask = torch.ones(pred.shape).type(torch.bool)
     for i in range(num_classes):
         out.append((((pred != i) & (target != i)) & mask).sum())
 
@@ -78,7 +78,7 @@ def false_positive(pred, target, num_classes, mask=None):
         pred = pred > 0.5
     out = []
     if mask is None:
-        mask = torch.ones(pred.shape)
+        mask = torch.ones(pred.shape).type(torch.bool)
     for i in range(num_classes):
         out.append((((pred == i) & (target != i)) & mask).sum())
 
@@ -101,7 +101,7 @@ def false_negative(pred, target, num_classes, mask=None):
         pred = pred > 0.5
     out = []
     if mask is None:
-        mask = torch.ones(pred.shape)
+        mask = torch.ones(pred.shape).type(torch.bool)
     for i in range(num_classes):
         out.append((((pred != i) & (target == i)) & mask).sum())
 
@@ -124,7 +124,7 @@ def precision(pred, target, num_classes, mask=None):
     elif num_classes == 2:
         pred = pred > 0.5
     if mask is None:
-        mask = torch.ones(pred.shape)
+        mask = torch.ones(pred.shape).type(torch.bool)
     tp = true_positive(pred, target, num_classes, mask).to(torch.float)
     fp = false_positive(pred, target, num_classes, mask).to(torch.float)
 
@@ -150,7 +150,7 @@ def recall(pred, target, num_classes, mask=None):
     elif num_classes == 2:
         pred = pred > 0.5
     if mask is None:
-        mask = torch.ones(pred.shape)
+        mask = torch.ones(pred.shape).type(torch.bool)
     tp = true_positive(pred, target, num_classes, mask).to(torch.float)
     fn = false_negative(pred, target, num_classes, mask).to(torch.float)
 
@@ -177,7 +177,7 @@ def f_beta_score(pred, target, num_classes, mask=None, beta=1):
     elif num_classes == 2:
         pred = pred > 0.5
     if mask is None:
-        mask = torch.ones(pred.shape)
+        mask = torch.ones(pred.shape).type(torch.bool)
     prec = precision(pred, target, num_classes, mask)
     rec = recall(pred, target, num_classes, mask)
 

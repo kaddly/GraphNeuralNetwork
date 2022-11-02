@@ -38,7 +38,7 @@ def evaluate(model, true_edges, false_edges):
 
     y_true = torch.Tensor(true_list)  # true label
     y_scores = torch.Tensor(prediction_list)  # predict proba
-    return F.cross_entropy(y_scores, y_true), accuracy(y_scores, y_true, 2), f_beta_score(y_scores, y_true, 2), recall(
+    return F.binary_cross_entropy_with_logits(y_scores, y_true), accuracy(y_scores, y_true, 2), f_beta_score(y_scores, y_true, 2), recall(
         y_scores, y_true, 2)
 
 
