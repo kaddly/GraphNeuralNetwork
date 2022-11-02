@@ -38,7 +38,8 @@ def evaluate(model, true_edges, false_edges):
 
     y_true = torch.Tensor(true_list)  # true label
     y_scores = torch.Tensor(prediction_list)  # predict proba
-    return F.cross_entropy(y_scores, y_true), accuracy(y_scores, y_true, 2), f_beta_score(y_scores, y_true, 2), recall(y_scores, y_true, 2)
+    return F.cross_entropy(y_scores, y_true), accuracy(y_scores, y_true, 2), f_beta_score(y_scores, y_true, 2), recall(
+        y_scores, y_true, 2)
 
 
 class ValScale:
@@ -60,14 +61,14 @@ class ValScale:
             node_emb = model(train_inputs, train_types,
                              node_neigh)  # [node1, node1]; [type1, type2]; [node1_neigh, node1_neigh]
             for j in range(self.edge_type_count):  # 每个节点在各个类别下的embedding
-                final_model[self.edge_types[j]][self.vocab.to_tokens[i]] = (
+                final_model[self.edge_types[j]][self.vocab.to_tokens(i)] = (
                     node_emb[j].cpu().detach().numpy()
                 )
         return final_model
 
     def val_eval(self, model, device, valid_true_data_by_edge, valid_false_data_by_edge, args):
         final_model = self.get_model(model, device)
-        valid_loss, valid_auc, valid_f1, valid_rcl = [], [], [], []
+        valid_loss, valid_acc, valid_f1, valid_rcl = [], [], [], []
         for i in range(self.edge_type_count):
             if args.eval_type == "all" or self.edge_types[i] in args.eval_type.split(","):
                 tmp_loss, tmp_auc, tmp_f1, tmp_rcl = evaluate(
@@ -76,10 +77,10 @@ class ValScale:
                     valid_false_data_by_edge[self.edge_types[i]],
                 )
                 valid_loss.append(tmp_loss)
-                valid_auc.append(tmp_auc)
+                valid_acc.append(tmp_auc)
                 valid_f1.append(tmp_f1)
                 valid_rcl.append(tmp_rcl)
-        return np.mean(valid_loss), np.mean(valid_auc), np.mean(valid_f1), np.mean(valid_rcl)
+        return np.mean(valid_loss), np.mean(valid_acc), np.mean(valid_f1), np.mean(valid_rcl)
 
 
 def train(net, loss, train_iter, val_scale: ValScale, val_iter, args):
@@ -123,7 +124,7 @@ def train(net, loss, train_iter, val_scale: ValScale, val_iter, args):
             if total_batch % args.print_freq == 0:
                 net.eval()
                 lr_current = optimizer.param_groups[0]["lr"]
-                valid_loss, valid_auc, valid_f1, valid_rcl = val_scale.val_eval(net, device, *val_iter, args)
+                valid_loss, valid_acc, valid_f1, valid_rcl = val_scale.val_eval(net, device, *val_iter, args)
                 if valid_loss < best_loss:
                     torch.save(net.state_dict(), os.path.join(parameter_path, args.model + '.ckpt'))
                     best_loss = valid_loss
@@ -133,5 +134,28 @@ def train(net, loss, train_iter, val_scale: ValScale, val_iter, args):
                     improve = ''
                 time_dif = timedelta(seconds=int(round(time.time() - start_time)))
                 msg = 'Iter: {0:>6},  Train Loss: {1:>5.4},  Train lr: {2:>5.4},  val loss: {3:>5.4},  val Acc: {4:>6.2%},  val recall: {5:6.2%},  val f1 score: {6:6.2%},  Time: {7} {8}'
-                print(msg.format(total_batch, metric[0] / metric[1], lr_current, time_dif, improve))
+                print(msg.format(total_batch, metric[0] / metric[1], lr_current, valid_loss, valid_acc, valid_rcl,
+                                 valid_f1, time_dif, improve))
                 net.train()
+            if total_batch - last_improve > args.Max_auto_stop_epoch:
+                # 验证集loss超过1000batch没下降，结束训练
+                print("No optimization for a long time, auto-stopping...")
+                flag = True
+                break
+        if flag:
+            break
+
+
+def test(net, data_iter, val_scale: ValScale, args):
+    if not os.path.exists(os.path.join(os.path.abspath('.'), 'saved_dict', 'GATNE.ckpt')):
+        print('please train before!')
+        return
+    device = torch.device(args.device) if torch.cuda.is_available() else torch.device('cpu')
+    net.load_state_dict(torch.load(os.path.join(os.path.abspath('.'), 'saved_dict', 'GATNE.ckpt')), False)
+    net.eval()
+    test_loss, test_acc, test_f1, test_rcl = val_scale.val_eval(net, device, *data_iter, args)
+    print("Test set results:",
+          "loss= {:>5.3f}".format(test_loss),
+          "accuracy= {:>6.2%}".format(test_acc),
+          "f1 score= {:>6.2%}".format(test_f1),
+          "recall= {:>6.2%}".format(test_rcl))
