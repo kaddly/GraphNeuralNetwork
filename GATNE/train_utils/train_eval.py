@@ -3,7 +3,6 @@ import os
 import numpy as np
 from datetime import timedelta
 import torch
-from torch import nn
 import torch.nn.functional as F
 from .optimizer_utils import create_lr_scheduler
 from .scale_utils import accuracy, f_beta_score, recall
