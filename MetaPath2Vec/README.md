@@ -21,3 +21,23 @@ $\phi(v):V->T_v$和$\phi(e):E->T_e$，这里的$T_e$和$T_v$指对象和关系�
 1. 利用随机游走来从图中获取序列，
 2. 利用skip-gram优化提取的序列。但是针对异构图，这部分中都存在一定的差异。这里分别说一下。
 
+**Heterogeneous Skip-Gram. 给定**异构网络$G=(V,E,t),|T_V|\gt 1$，目标就是在给定节点v后，使其上下文内容存在的概率最大化，如下：
+$$
+arg max_{\theta}\sum_{v\in V}\sum_{t\in T_V}\sum_{c_t\in N_t(v)}\log{p(c_t|v;\theta)}
+$$
+这里的$N_t(v)$指的是在节点v的邻近节点中，为第t个类型的节点。而概率函数$p(c_t|v;\theta)$则为softmax。可表示为：
+$$
+p(c_t|v;\theta)=\frac{e^{X_{c_t}{X_v}}}{\sum_{u\in V}e^{X_uX_v}}
+$$
+这里$X_v$就是从矩阵X从取出来的第v行向量，它表示节点v的embedding向量。为了减少计算量，进一步优化为负采样后的优化目标：
+$$
+\log{\sigma(X_{c_t}X_v)}+\sum_{m=1}^ME_{u^m}P(v)[\log{\sigma(-X_{u^m}X_v)}]
+$$
+其中是sigmoid函数，p(u)是预定义的函数，用于采样节点M次。这里它并没有区分不同的节点来进行采样，对不同节点进行均匀采样。
+
+**元路径随机游走（Meta-Path-Based Random Walks.）**在deepwalk和node2vec中都采用的是随机游走的方式，如果不考虑节点之间的类型，我们也可以直接使用随机游走来定义转化概率$p(v^{i+1}|v^i)$,然后生成的序列直接利用skipgram来进行优化。但是sun等人证明来随机游走是偏向于高可见类型的节点，即那些具有主导优势的节点，所以本文提出来一个基于元路径的随机游走方法。
+
+定义metapath的P的形式为
+$$
+v_1
+$$
