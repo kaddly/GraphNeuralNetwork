@@ -1,3 +1,7 @@
+$$
+v_1
+$$
+
 # 8. MetaPath2Vec
 
 metapath2vec用于解决异构网络的embedding表示。是将deepwalk的算法思路引入到异构网络当中，并针对异构网络的特点，针对deepwalk算法中的各个步骤，针对性的进行优化。
@@ -39,5 +43,21 @@ $$
 
 定义metapath的P的形式为
 $$
-v_1
+v_1\to^{R_1} v_2\to^{R_2}...\to^{R_t}v_t
 $$
+其中$v_1,v_2$指的都是节点类型，metapath的意思就是事先定义好节点类型的变化规律。而整个变化规律就是从$v_1$到$v_t$这样就可以将变化规律限制在定义好的metapath之中，用于解决随机游走偏向于选择高可见类型节点的问题。具体的在每步的转移概率为：
+$$
+p(v^{i+1}|v_t^i,\rho)=\left\{ \begin{array}{l}
+	\frac{1}{|N_{t+1}(v_t^i)|}\quad (v^{i+1},v_t^i)\in E,\phi(v^{i+1})=t+1\\
+	0\quad (v^{i+1},v_t^i)\in E,\phi(v^{i+1})\neq t+1\\
+	0\quad (v^{i+1},v_t^i)\in E\\
+\end{array} \right.
+$$
+其中$v_t^i\in V_t$，而$N_{t+1}(v_t^i)$指的是节点$v_t^i$的$V_{t+1}$类型的邻近节点，而转移概率就是该类型节点个数的倒数。表达的是只有在下一步为指定mtapath位置上的节点类型的时候才发生转移，并且转移概率为领域内该类型节点数的倒数。基于metapath的随机游走保证来语义变化的正确性。比如如下图中的a4所示，如果其上一步为CMU，那么它可以转移到a2,a3,a5,p2,p3,CMU中任意和其由链接的节点。但是如果定义来metapath “OAPVPAO”，随机游走就会偏向于选择P类型的节点。
+
+
+
+## 8.3、metapath++
+
+在前面的metapath中，存在一个小问题，就是随机游走这一步是考虑来节点的类型了，但是skipgram在训练的时候并有没对其区分对待。所以进一步针对这点提出了**Heterogeneous negative sampling.** 优化函数如下：
+
