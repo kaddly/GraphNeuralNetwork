@@ -43,3 +43,15 @@
 例如用户A在点击商品的场景下学习一种向量表示，在购买商品场景下学习另一种向量表示，而不同的场景之间并不完全独立，希望用base embedding来当做不同类型关系传递信息的桥梁，综合base embedding和每一类型边的edge embedding来进行建模。
 ```
 
+模型结构如图所示，网络结构利用两部分向量Base Embedding和Edge Embedding表示，其中Base Embedding为共享向量，出现在每一种边类型中；Edge Embedding在每一种边类型中不同。GATNE-T仅利用了网络结构信息，GATNE-I同时利用了网络结构信息和节点性质。
+
+### Transductive Model：GATNE-T
+
+如上图所示，在GATNE-T中，每个节点在每种edge type下的embedding由两部分组成，分别是**Base** **embedding**和**Edge** **embedding**。
+
+- base embedding：每个节点在每种edge type下共享
+- edge embedding：通过相邻节点的edge embedding计算得到的
+
+GATNE-T的核心思想就是聚合不同类型的邻居到当前节点，然后对每一种边类型的节点都生成不同的向量表示，模型整体可以分为如下4步：
+
+1. 类似Graphsage对邻居聚合的思想，节点$v_i$对类别为$r$的第$k$阶邻居进行聚合，得到edge Embedding $u_{i,r}^{(k)};u_{i,r}^{(k)}=aggregator({u_{j,r}^{(k-1)},\forall v_i\in \mathcal{N}_{i,r}})$
