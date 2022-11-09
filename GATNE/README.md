@@ -45,13 +45,22 @@
 
 模型结构如图所示，网络结构利用两部分向量Base Embedding和Edge Embedding表示，其中Base Embedding为共享向量，出现在每一种边类型中；Edge Embedding在每一种边类型中不同。GATNE-T仅利用了网络结构信息，GATNE-I同时利用了网络结构信息和节点性质。
 
-### Transductive Model：GATNE-T
+1. ### Transductive Model：GATNE-T
 
-如上图所示，在GATNE-T中，每个节点在每种edge type下的embedding由两部分组成，分别是**Base** **embedding**和**Edge** **embedding**。
+   如上图所示，在GATNE-T中，每个节点在每种edge type下的embedding由两部分组成，分别是**Base** **embedding**和**Edge** **embedding**。
 
-- base embedding：每个节点在每种edge type下共享
-- edge embedding：通过相邻节点的edge embedding计算得到的
+   - base embedding：每个节点在每种edge type下共享
+   - edge embedding：通过相邻节点的edge embedding计算得到的
 
-GATNE-T的核心思想就是聚合不同类型的邻居到当前节点，然后对每一种边类型的节点都生成不同的向量表示，模型整体可以分为如下4步：
+   GATNE-T的核心思想就是聚合不同类型的邻居到当前节点，然后对每一种边类型的节点都生成不同的向量表示，模型整体可以分为如下4步：
 
-1. 类似Graphsage对邻居聚合的思想，节点$v_i$对类别为$r$的第$k$阶邻居进行聚合，得到edge Embedding $u_{i,r}^{(k)};u_{i,r}^{(k)}=aggregator({u_{j,r}^{(k-1)},\forall v_i\in \mathcal{N}_{i,r}})$
+   1. 类似Graphsage对邻居聚合的思想，节点$v_i$对类别为$r$的第$k$阶邻居进行聚合，得到edge Embedding $u_{i,r}^{(k)};u_{i,r}^{(k)}=aggregator({u_{j,r}^{(k-1)},\forall v_i\in \mathcal{N}_{i,r}})$
+      1. $\mathcal{N}_{i,r}$是节点$v_i$边类型为$r$的邻居，节点$v_i$类型为$r$的边对应的向量$u^{(0)}_{i,r}$随机初始化
+      2. 聚合函数可以为：
+         1. 均值聚合：$u^{(k)}_{i,r}=\delta{(\hat{W}^{(k)}mean(\{u_{j,r}^{(k-1)},\forall{v_j\in{\mathcal{N}_{i,r}}}\})})$
+         2. 最大池化聚合：$u^{(k)}_{i,r}=max(\{\delta(\hat{W}^{(k)}_{pool}u^{(k-1)}_{j,r}+\hat{b}_{pool}^{(k)},\forall{v_j\in{\mathcal{N}_{i,r}}}\}))$
+   2. 把k阶邻居，不同类型的边节点，对应的edge embedding进行聚合，得到$U_i=(u_{i,1},u_{i,2},...,u_{i,m})$
+   3. 由于我们不知道每个节点在每种edge type下的表示之间的关系，不同的边影响不同，所以我们通过self-attention的机制来建模这种相互关系，并得到每种edge type下的表示对于各个edge type的权重：$a_{i,r}=softmax(w^T_rtanh(W_rU_i))^T$（其中，$w_r\in{R^{da}},W_r\in{R^{da\times{s}}}$为要学习的参数）
+   4. 综合base embedding和edge embedding得到最终节点$v_i$边类型$r$的节点向量表示：$v_{i,r}=b_i+\alpha_rM_r^TU_i\mathcal{a}_{i,r}$（其中$b_i$为节点i的base embedding，$\alpha_r$为超参数控制edge embedding的重要程度，$M_r\in{R^{s\times{d}}}$是学习的参数
+
+   然后将GATNE-T和MNE(Hongming Zhang, Liwei Qiu, Lingling Yi, and Yangqiu Song. 2018. Scalable Multiplex Network Embedding. In IJCAI’18. )。区别在于GATNE-T为不同类型的边分配了注意力。
