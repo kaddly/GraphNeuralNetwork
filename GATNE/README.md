@@ -95,5 +95,11 @@ GATNE-T的核心思想就是聚合不同类型的邻居到当前节点，然后�
 
 即只有当边类型属于类型$r$时，且节点类型符合路径中的节点类型才能被采样
 
+给定节点$v_i$和其路径中的上下文$C$，目标函数是最小化如下的负对数似然函数：
+$$
+-\log{P_\theta(\{v_j|v_j\in C\}|v_i)}=\sum_{v_j\in C}-\log{P_\theta(v_j|v_i)}
+$$
+其中右侧每一项的给吕是通过heterogeneous softmax function来计算的：$P_\theta(v_j|v_i)=\frac{\exp(c_j^T\cdot{v_{i,j}})}{\sum_{k\in{V_t}\exp(c_k^T\cdot{v_{i,j}})}}$，其中c表示节点的文本嵌入。
 
+最后通过heterogeneous negative sampling（负采样技术）来近似负对数似然（L为负样本个数）：
 
