@@ -47,6 +47,14 @@ def read_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amaz
     return edge_data_by_type, val_true_edge_data_by_type, val_false_edge_data_by_type, test_true_edge_data_by_type, test_false_edge_data_by_type
 
 
+def read_features():
+    pass
+
+
+def read_node_types():
+    pass
+
+
 class MyDataset(Dataset):
     def __init__(self):
         pass
