@@ -47,11 +47,22 @@ def read_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amaz
     return edge_data_by_type, val_true_edge_data_by_type, val_false_edge_data_by_type, test_true_edge_data_by_type, test_false_edge_data_by_type
 
 
-def read_features():
-    pass
+def read_features(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
+    data_path = os.path.join(data_dir, dataset, 'feature.txt')
+    feature_dict = {}
+    print("We are loading data from:" + data_path)
+    with open(data_path, 'r') as f:
+        first = True
+        for line in f:
+            if first:
+                first = False
+                continue
+            items = line.strip().split()
+            feature_dict[items[0]] = items[1:]
+    return feature_dict
 
 
-def read_node_types():
+def read_node_types(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
     pass
 
 
