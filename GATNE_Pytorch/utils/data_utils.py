@@ -63,7 +63,14 @@ def read_features(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='
 
 
 def read_node_types(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
-    pass
+    data_path = os.path.join(data_dir, dataset, 'node_type.txt')
+    node_type = {}
+    print('We are loading node type from:' + data_path)
+    with open(data_path, 'r') as f:
+        for line in f:
+            items = line.strip().split()
+            node_type[items[0]] = items[1]
+    return node_type
 
 
 class MyDataset(Dataset):
