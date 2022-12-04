@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 import torch
 from torch.utils.data import DataLoader, Dataset
 
@@ -71,6 +72,15 @@ def read_node_types(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset
             items = line.strip().split()
             node_type[items[0]] = items[1]
     return node_type
+
+
+def get_G_from_edges(edges):
+    edge_dict = defaultdict(set)
+    for edge in edges:
+        u, v = str(edge[0]), str(edge[1])
+        edge_dict[u].add(v)
+        edge_dict[v].add(u)
+    return edge_dict  # 每个节点和它相连接的节点
 
 
 class MyDataset(Dataset):
