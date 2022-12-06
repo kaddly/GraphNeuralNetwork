@@ -83,7 +83,7 @@ def get_G_from_edges(edges):
     return edge_dict  # 每个节点和它相连接的节点
 
 
-def generate_walks():
+def generate_walks(network_data, num_walks, walk_length, schema):
     pass
 
 
