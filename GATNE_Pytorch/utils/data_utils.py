@@ -87,6 +87,14 @@ def generate_walks(network_data, num_walks, walk_length, schema):
     pass
 
 
+def generator_pairs(all_walks, vocab, window_size):
+    pass
+
+
+def generator_neighbor():
+    pass
+
+
 class MyDataset(Dataset):
     def __init__(self):
         pass
