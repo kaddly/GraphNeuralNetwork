@@ -91,7 +91,7 @@ def generator_pairs(all_walks, vocab, window_size):
     pass
 
 
-def generator_neighbor():
+def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samples):
     pass
 
 
