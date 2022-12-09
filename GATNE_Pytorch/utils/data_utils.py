@@ -108,3 +108,8 @@ class MyDataset(Dataset):
 
 def load_data():
     pass
+
+
+
+def save_works():
+    pass
