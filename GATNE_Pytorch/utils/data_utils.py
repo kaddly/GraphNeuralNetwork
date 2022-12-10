@@ -106,9 +106,10 @@ class MyDataset(Dataset):
         pass
 
 
-def load_data():
-    pass
-
+def load_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt'):
+    walk_file = os.path.join(data_dir, file_name)
+    if not os.path.exists(walk_file):
+        raise FileNotFoundError("please generator walk first!")
 
 
 def save_works():
