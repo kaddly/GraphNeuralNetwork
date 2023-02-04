@@ -5,8 +5,7 @@ import torch.nn.functional as F
 
 class GraphEncoder(nn.Module):
     def __init__(self, num_nodes, embedding_size, embedding_u_size, edge_type_count, attention_size, features,
-                 agg_func='SUM',
-                 **kwargs):
+                 agg_func='SUM', **kwargs):
         """
         初试化函数
         :param num_nodes:节点数量
@@ -77,10 +76,11 @@ class GraphEncoder(nn.Module):
         else:
             raise ValueError("please choice else aggregator!")
 
+        # [64, 32, 256]
         trans_w = self.trans_weights[node_types]
-        # [64, 10, 32]
+        # [64, 32, 16]
         trans_w_s1 = self.trans_weights_s1[node_types]
-        # [64, 32, 1]
+        # [64, 16, 1]
         trans_w_s2 = self.trans_weights_s2[node_types]
 
         attention = F.softmax(
