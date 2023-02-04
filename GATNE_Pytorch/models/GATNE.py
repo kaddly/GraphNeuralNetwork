@@ -1,4 +1,3 @@
-import math
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -110,8 +109,9 @@ class GraphDecoder(nn.Module):
     def reset_parameters(self):
         nn.init.xavier_uniform(self.weights.data)
 
-    def forward(self):
-        pass
+    def forward(self, embed, contest_negative):
+        pre = torch.bmm(embed, self.weight[contest_negative].permute(0, 2, 1))
+        return pre
 
 
 class GATNEModel(nn.Module):
@@ -122,5 +122,6 @@ class GATNEModel(nn.Module):
                                     features, **kwargs)
         self.decoder = GraphDecoder(num_nodes, embedding_size)
 
-    def forward(self):
-        pass
+    def forward(self, inputs, node_types, node_neigh, context_negative):
+        embed = self.encoder(inputs, node_types, node_neigh)
+        return self.decoder(embed, context_negative)
