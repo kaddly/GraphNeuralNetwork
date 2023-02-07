@@ -8,7 +8,7 @@ def parse_args():
     import argparse
     parser = argparse.ArgumentParser(description="pytorch GATNE training")
     # data process parameter
-    parser.add_argument('--data_dir', type=str, default=os.path.join(os.path.abspath('.'), 'data'), help='DRIVE root')
+    parser.add_argument('--data_dir', type=str, default=os.path.join(os.path.abspath('.'), '../GATNE_Pytorch/data'), help='DRIVE root')
     parser.add_argument('--dataset', type=str, default='amazon', help='Dataset name')
     parser.add_argument('--schema', type=str, default=None,
                         help='The MetaPath schema (e.g., U-I-U,I-U-I).')

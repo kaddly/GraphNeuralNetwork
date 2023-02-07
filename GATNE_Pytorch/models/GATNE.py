@@ -45,14 +45,14 @@ class GraphEncoder(nn.Module):
 
     def reset_parameters(self):
         if self.features is not None:
-            nn.init.xavier_uniform(self.embed_trans.data)
-            nn.init.xavier_uniform(self.u_embed_trans.data)
+            nn.init.xavier_uniform_(self.embed_trans.data)
+            nn.init.xavier_uniform_(self.u_embed_trans.data)
         else:
             nn.init.uniform_(self.node_embeddings.data)
             nn.init.uniform_(self.node_type_embeddings.data)
-        nn.init.xavier_uniform(self.trans_weights.data)
-        nn.init.xavier_uniform(self.trans_weights_s1.data)
-        nn.init.xavier_uniform(self.trans_weights_s2.data)
+        nn.init.xavier_uniform_(self.trans_weights.data)
+        nn.init.xavier_uniform_(self.trans_weights_s1.data)
+        nn.init.xavier_uniform_(self.trans_weights_s2.data)
 
     def forward(self, inputs, node_types, node_neigh):
         if self.features is None:
@@ -82,7 +82,7 @@ class GraphEncoder(nn.Module):
         trans_w_s1 = self.trans_weights_s1[node_types]
         # [64, 16, 1]
         trans_w_s2 = self.trans_weights_s2[node_types]
-
+        # [64, 1, 2]
         attention = F.softmax(
             torch.matmul(
                 torch.tanh(torch.matmul(node_type_embed, trans_w_s1)), trans_w_s2
@@ -102,15 +102,15 @@ class GraphDecoder(nn.Module):
         super(GraphDecoder, self).__init__(**kwargs)
         self.num_nodes = num_nodes
         self.embedding_size = embedding_size
-        self.weight = nn.Parameter(torch.FloatTensor(num_nodes, embedding_size))
+        self.weights = nn.Parameter(torch.FloatTensor(num_nodes, embedding_size))
 
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform(self.weights.data)
+        nn.init.xavier_uniform_(self.weights.data)
 
     def forward(self, embed, contest_negative):
-        pre = torch.bmm(embed, self.weight[contest_negative].permute(0, 2, 1))
+        pre = torch.bmm(embed, self.weights[contest_negative].permute(0, 2, 1))
         return pre
 
 
