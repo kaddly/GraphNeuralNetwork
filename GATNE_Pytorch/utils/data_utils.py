@@ -1,8 +1,10 @@
 import os
-from collections import defaultdict
+import random
+import math
 import torch
 from torch.utils.data import DataLoader, Dataset
-from .graph_utils import get_G_from_edges, Vocab
+from utils.graph_utils import get_G_from_edges, Vocab
+from utils.sample_utils import RWGraph, RandomGenerator
 
 
 def read_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amazon'):
@@ -75,34 +77,121 @@ def read_node_types(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset
     return node_type
 
 
-def generate_walks(network_data, num_walks, walk_length, schema):
-    pass
+def generate_walks(network_data, num_walks, walk_length, schema, data_dir=os.path.join(os.path.abspath('.'), 'data'),
+                   dataset='amazon', num_workers=2):
+    if schema is not None:
+        node_type = read_node_types(data_dir, dataset)
+    else:
+        node_type = None
+
+    all_walks = []  # 所有游走的list
+    for layer_id, layer_name in enumerate(network_data):
+        tmp_data = network_data[layer_name]  # 每个type对应到的点边信息
+        # start to do the random walk on a layer
+        # get_G_from_edges(tmp_data): 每个节点对应到相连接的点
+        layer_walker = RWGraph(get_G_from_edges(tmp_data), node_type, num_workers)  # RandomWalk Graph
+        print('Generating random walks for layer', layer_name)
+        layer_walks = layer_walker.simulate_walks(num_walks, walk_length, schema=schema)  # 生成随机游走的序列; 每个节点游走次数; 游走长度;
+
+        all_walks.append(layer_walks)
+
+        print('Finish generating the walks')
+
+    return all_walks
 
 
-def generator_pairs(all_walks, vocab, window_size):
-    pass
+def subsample(sentences, vocab):
+    """下采样高频词"""
+    # 排除未知词元'<UNK>'
+    sentences = [[token for token in line if vocab[token] != vocab.unk] for line in sentences]
+
+    counter = vocab.token_counter
+    num_tokens = sum(counter.values())
+
+    # 如果在下采样期间保留词元，则返回True
+    def keep(token):
+        return random.randint(0, 1) < math.sqrt(1e-4 / counter[token] * num_tokens)
+
+    return [[token for token in line if keep(token)] for line in sentences]
 
 
-def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samples):
-    pass
+def get_centers_and_contexts(all_corpus, max_window_size):
+    """返回跳元模型中的中心词与上下文单词"""
+    centers, context = [], []
+    for layer_id, corpus in enumerate(all_corpus):
+        for line in corpus:
+            # 形成“中心词-上下文词”对，每个句子至少需要两个单词
+            if len(line) < 2:
+                continue
+            centers += line
+            for i in range(len(line)):
+                window_size = random.randint(1, max_window_size)
+                indices = list(range(max(0, i - window_size), min(len(line), i + 1 + window_size)))
+
+                # 从上下文词中排除中心词
+                indices.remove(i)
+                context.append(([line[idx] for idx in indices], layer_id))
+    return centers, context
 
 
-class MyDataset(Dataset):
-    def __init__(self):
-        pass
+def get_negative(all_contexts, vocab, K):
+    """返回负采样中的噪声词"""
+    # 索引为1、2、...（索引0是词表中排除的未知标记）
+    sampling_weights = [vocab.token_counter[vocab.to_tokens(i)] ** 0.75 for i in range(1, len(vocab))]
+    all_negatives, generator = [], RandomGenerator(sampling_weights)
+    for contexts, _ in all_contexts:
+        negatives = []
+        while len(negatives) < len(contexts) * K:
+            neg = generator.draw()
+            # 噪声词不能是上下⽂词
+            if neg not in contexts:
+                negatives.append(neg)
+        all_negatives.append(negatives)
+    return all_negatives
+
+
+class MRDataset(Dataset):
+    def __init__(self, centers, contexts, negatives):
+        assert len(centers) == len(contexts) == len(negatives)
+        self.centers = centers
+        self.contexts = contexts
+        self.negatives = negatives
 
     def __getitem__(self, item):
-        pass
+        return self.centers[item], self.contexts[item], self.negatives[item]
 
     def __len__(self):
-        pass
+        return len(self.centers)
 
 
-def load_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), file_name='train_walks.txt'):
-    walk_file = os.path.join(data_dir, file_name)
-    if not os.path.exists(walk_file):
-        raise FileNotFoundError("please generator walk first!")
+def collate_fn(data):
+    max_len = max(len(c) + len(n) for _, (c, _), n in data)
+    centers, type_ids, contexts_negatives, masks, labels = [], [], [], [], []
+    for center, (context, type_id), negative in data:
+        cur_len = len(context) + len(negative)
+        centers += [center]
+        type_ids += [type_id]
+        contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
+        masks += [[1] * cur_len + [0] * (max_len - cur_len)]
+        labels += [[1] * len(context) + [0] * (max_len - len(context))]
+    return (torch.tensor(centers).reshape((-1, 1))
+            , torch.tensor(type_ids).reshape((-1, 1))
+            , torch.tensor(contexts_negatives)
+            , torch.tensor(masks)
+            , torch.tensor(labels))
 
 
-def save_works():
-    pass
+def load_data(data_dir, dataset, batch_size, num_walks, walk_length, schema=None, num_walkers=2, max_window_size=5,
+              K=2):
+    train_edge_data_by_type, val_true_edge_data_by_type, val_false_edge_data_by_type, test_true_edge_data_by_type, test_false_edge_data_by_type = read_data(
+        data_dir=data_dir, dataset=dataset)
+    train_walks = generate_walks(train_edge_data_by_type, num_walks=num_walks, walk_length=walk_length, schema=schema,
+                                 data_dir=data_dir, dataset=dataset, num_workers=num_walkers)
+    vocab = Vocab([layer_walks for layer_walks in train_walks], min_freq=4)
+    train_walks = [subsample(layer_walks, vocab) for layer_walks in train_walks]
+    train_walks = [[vocab[line] for line in layer_walks] for layer_walks in train_walks]
+    train_centers, train_contexts = get_centers_and_contexts(train_walks, max_window_size=max_window_size)
+    train_negatives = get_negative(train_contexts, vocab, K)
+    train_dataset = MRDataset(train_centers, train_contexts, train_negatives)
+    train_iter = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+    return train_iter, vocab

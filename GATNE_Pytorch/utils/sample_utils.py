@@ -1,48 +1,57 @@
 import random
 from joblib import Parallel, delayed
-import itertools
+from tqdm import tqdm
 
 
-def partition_num(num, workers):
-    if num % workers == 0:
-        return [num // workers] * workers
-    else:
-        return [num // workers] * workers + [num % workers]
+class RWGraph:
+    def __init__(self, nx_G, node_type_arr=None, num_workers=16):
+        self.G = nx_G
+        self.node_type = node_type_arr
+        self.num_workers = num_workers
 
+    def node_list(self, nodes, num_walks):
+        for loop in range(num_walks):  # 循环num_walks次数
+            for node in nodes:
+                yield node
 
-class RandomWalker:
-    def __init__(self, HG, user_to_idx=None):
-        self.HG = HG
-        self.user_to_idx = user_to_idx
+    def simulate_walks(self, num_walks, walk_length, schema=None, verbose=0):
+        all_walks = []
+        nodes = list(self.G.keys())  # 节点顶点数量
+        random.shuffle(nodes)
 
-    def meta_path_walk(self, start_node, meta_path):
-        HG = self.HG
-        walk = [start_node]
-        candidate = start_node
-        for i in range(len(meta_path) - 1):
-            meta_path_adj = HG.HG_adj[meta_path[i] + '->' + meta_path[i + 1]]
-            candidates = meta_path_adj[candidate].nonzero()[1]
-            candidate = random.choice(candidates)
-            walk.append(candidate)
+        if schema is None:
+            all_walks = Parallel(n_jobs=self.num_workers, verbose=verbose)(
+                delayed(self._simulate_walks)(walk_length, node, '') for node in tqdm(self.node_list(nodes, num_walks)))
+        else:
+            schema_list = schema.split(',')
+            for schema_iter in schema_list:
+                walks = Parallel(n_jobs=self.num_workers, verbose=verbose)(
+                    delayed(self._simulate_walks)(walk_length, node, schema_iter) for node in tqdm(self.node_list(nodes, num_walks)) if
+                    schema_iter.split('-')[0] == self.node_type[node])
+                all_walks.extend(walks)
+
+        return all_walks
+
+    def _simulate_walks(self, walk_length, start, schema):
+        # Simulate a random walk starting from start node.
+        rand = random.Random()
+
+        if schema:
+            schema_items = schema.split('-')
+            assert schema_items[0] == schema_items[-1]  # metapath前后一致; A-B-A
+
+        walk = [start]
+        while len(walk) < walk_length:
+            cur = walk[-1]  # 当前节点
+            candidates = []
+            for node in self.G[cur]:  # 和cur节点相连接的节点; 候选节点
+                if schema == '' or self.node_type[node] == schema_items[len(walk) % (len(schema_items) - 1)]:
+                    candidates.append(node)
+            if candidates:
+                walk.append(str(rand.choice(candidates)))
+            else:
+                break
         return walk
-
-    def simulate_walks(self, num_walks, meta_path, workers=1, verbose=0):
-        HG = self.HG
-        nodes = list(HG.node_index_map[meta_path[0]])
-        results = Parallel(n_jobs=workers, verbose=verbose)(
-            delayed(self._simulate_walks)(nodes, num, meta_path) for num in
-            partition_num(num_walks, workers))
-        walks = list(itertools.chain(*results))
-
-        return walks
-
-    def _simulate_walks(self, nodes, num_walks, meta_path):
-        walks = []
-        for _ in range(num_walks):
-            random.shuffle(nodes)
-            for v in nodes:
-                walks.append(self.meta_path_walk(meta_path=meta_path, start_node=v))
-        return walks
 
 
 class RandomGenerator:

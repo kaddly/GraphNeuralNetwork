@@ -12,8 +12,8 @@ class Vocab:
         if reserved_tokens is None:
             reserved_tokens = []
         # 按照频率统计出现的次数
-        counter = count_corpus(tokens)
-        self._token_freqs = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+        self.counter = count_corpus(tokens)
+        self._token_freqs = sorted(self.counter.items(), key=lambda x: x[1], reverse=True)
 
         # 未知词元索引为0
         self.idx_to_token = ['<UNK>'] + reserved_tokens
@@ -46,6 +46,10 @@ class Vocab:
     @property
     def token_freqs(self):
         return self._token_freqs
+
+    @property
+    def token_counter(self):
+        return self.counter
 
 
 def count_corpus(tokens):
