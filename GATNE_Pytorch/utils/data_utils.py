@@ -1,6 +1,7 @@
 import os
 import random
 import math
+from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader, Dataset
 from utils.graph_utils import get_G_from_edges, Vocab
@@ -31,9 +32,9 @@ def read_data(data_dir=os.path.join(os.path.abspath('.'), 'data'), dataset='amaz
         false_edge_data_by_type = dict()  # false样本
         for sentence in f_index:
             tokens = sentence[:-1].split(' ')
-            x, y = tokens[0], tokens[1]
+            x, y = tokens[1], tokens[2]
             if int(tokens[3]) == 1:  # true对应到的节点
-                if words[0] not in true_edge_data_by_type:
+                if tokens[0] not in true_edge_data_by_type:
                     true_edge_data_by_type[tokens[0]] = list()  # true对应到的type相连接节点
                 true_edge_data_by_type[tokens[0]].append((x, y))
             else:
@@ -150,7 +151,7 @@ def get_negative(all_contexts, vocab, K):
     return all_negatives
 
 
-class MRDataset(Dataset):
+class MulEdgeDataset(Dataset):
     def __init__(self, centers, contexts, negatives):
         assert len(centers) == len(contexts) == len(negatives)
         self.centers = centers
@@ -164,34 +165,66 @@ class MRDataset(Dataset):
         return len(self.centers)
 
 
-def collate_fn(data):
-    max_len = max(len(c) + len(n) for _, (c, _), n in data)
-    centers, type_ids, contexts_negatives, masks, labels = [], [], [], [], []
-    for center, (context, type_id), negative in data:
-        cur_len = len(context) + len(negative)
-        centers += [center]
-        type_ids += [type_id]
-        contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
-        masks += [[1] * cur_len + [0] * (max_len - cur_len)]
-        labels += [[1] * len(context) + [0] * (max_len - len(context))]
-    return (torch.tensor(centers).reshape((-1, 1))
-            , torch.tensor(type_ids).reshape((-1, 1))
-            , torch.tensor(contexts_negatives)
-            , torch.tensor(masks)
-            , torch.tensor(labels))
+class Collate_fn:
+    def __init__(self, neighbors):
+        self.neighbors = neighbors
+
+    def __call__(self, data):
+        max_len = max(len(c) + len(n) for _, (c, _), n in data)
+        centers, type_ids, neighbors, contexts_negatives, masks, labels = [], [], [], [], [], []
+        for center, (context, type_id), negative in data:
+            cur_len = len(context) + len(negative)
+            centers += [center]
+            type_ids += [type_id]
+            neighbors.append(self.neighbors[center])
+            contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
+            masks += [[1] * cur_len + [0] * (max_len - cur_len)]
+            labels += [[1] * len(context) + [0] * (max_len - len(context))]
+        return (torch.tensor(centers).reshape((-1, 1))
+                , torch.tensor(type_ids).reshape((-1, 1))
+                , torch.tensor(neighbors)
+                , torch.tensor(contexts_negatives)
+                , torch.tensor(masks)
+                , torch.tensor(labels))
 
 
-def load_data(data_dir, dataset, batch_size, num_walks, walk_length, schema=None, num_walkers=2, max_window_size=5,
+def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samples):
+    edge_type_count = len(edge_types)
+    neighbors = [[[] for _ in range(edge_type_count)] for _ in range(num_nodes)]
+    for r in range(edge_type_count):
+        print("Generator neighbors for later", r)
+        g = network_data[edge_types[r]]  # 每个type涉及到的节点
+        for (x, y) in tqdm(g):
+            ix = vocab[x]  # x对应到的索引
+            iy = vocab[y]  # y对应到的索引
+            neighbors[ix][r].append(iy)  # 邻居信息
+            neighbors[iy][r].append(ix)
+        for i in range(num_nodes):
+            if len(neighbors[i][r]) == 0:  # 节点在这个类别下，如果没有节点和它连接，邻居就是该节点本身
+                neighbors[i][r] = [i] * neighbor_samples
+            elif len(neighbors[i][r]) < neighbor_samples:  # 如果邻居节点数量小于采样邻居数量，进行重采样
+                neighbors[i][r].extend(
+                    list(random.choices(neighbors[i][r], k=neighbor_samples - len(neighbors[i][r]))))
+            elif len(neighbors[i][r]) > neighbor_samples:  # 如果邻居节点数量大于采样邻居数量，进行邻居大小数量的采样
+                neighbors[i][r] = list(random.sample(neighbors[i][r], k=neighbor_samples))
+    return neighbors  # 每个节点的邻居采样
+
+
+def load_data(data_dir, dataset, batch_size, neighbor_samples, num_walks, walk_length, schema=None, num_walkers=2,
+              max_window_size=5,
               K=2):
     train_edge_data_by_type, val_true_edge_data_by_type, val_false_edge_data_by_type, test_true_edge_data_by_type, test_false_edge_data_by_type = read_data(
         data_dir=data_dir, dataset=dataset)
     train_walks = generate_walks(train_edge_data_by_type, num_walks=num_walks, walk_length=walk_length, schema=schema,
                                  data_dir=data_dir, dataset=dataset, num_workers=num_walkers)
     vocab = Vocab([layer_walks for layer_walks in train_walks], min_freq=4)
+    train_neighbors = generator_neighbor(train_edge_data_by_type, vocab, len(vocab),
+                                         list(train_edge_data_by_type.keys()), neighbor_samples)
     train_walks = [subsample(layer_walks, vocab) for layer_walks in train_walks]
     train_walks = [[vocab[line] for line in layer_walks] for layer_walks in train_walks]
     train_centers, train_contexts = get_centers_and_contexts(train_walks, max_window_size=max_window_size)
     train_negatives = get_negative(train_contexts, vocab, K)
-    train_dataset = MRDataset(train_centers, train_contexts, train_negatives)
+    train_dataset = MulEdgeDataset(train_centers, train_contexts, train_negatives)
+    collate_fn = Collate_fn(train_neighbors)
     train_iter = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-    return train_iter, vocab
+    return train_iter, val_true_edge_data_by_type, val_false_edge_data_by_type, test_true_edge_data_by_type, test_false_edge_data_by_type, vocab

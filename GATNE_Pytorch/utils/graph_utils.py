@@ -1,7 +1,5 @@
-from scipy.sparse import csr_matrix
 import collections
 from collections import defaultdict
-import numpy as np
 
 
 # 词表
