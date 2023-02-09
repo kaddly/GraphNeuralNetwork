@@ -210,21 +210,19 @@ def generator_neighbor(network_data, vocab, num_nodes, edge_types, neighbor_samp
     return neighbors  # 每个节点的邻居采样
 
 
-def load_data(data_dir, dataset, batch_size, neighbor_samples, num_walks, walk_length, schema=None, num_walkers=2,
-              max_window_size=5,
-              K=2):
+def load_data(args):
     train_edge_data_by_type, val_true_edge_data_by_type, val_false_edge_data_by_type, test_true_edge_data_by_type, test_false_edge_data_by_type = read_data(
-        data_dir=data_dir, dataset=dataset)
-    train_walks = generate_walks(train_edge_data_by_type, num_walks=num_walks, walk_length=walk_length, schema=schema,
-                                 data_dir=data_dir, dataset=dataset, num_workers=num_walkers)
+        data_dir=args.data_dir, dataset=args.dataset)
+    train_walks = generate_walks(train_edge_data_by_type, num_walks=args.num_walks, walk_length=args.walk_length, schema=args.schema,
+                                 data_dir=args.data_dir, dataset=args.dataset, num_workers=args.num_workers)
     vocab = Vocab([layer_walks for layer_walks in train_walks], min_freq=4)
     train_neighbors = generator_neighbor(train_edge_data_by_type, vocab, len(vocab),
-                                         list(train_edge_data_by_type.keys()), neighbor_samples)
+                                         list(train_edge_data_by_type.keys()), args.neighbor_samples)
     train_walks = [subsample(layer_walks, vocab) for layer_walks in train_walks]
     train_walks = [[vocab[line] for line in layer_walks] for layer_walks in train_walks]
-    train_centers, train_contexts = get_centers_and_contexts(train_walks, max_window_size=max_window_size)
-    train_negatives = get_negative(train_contexts, vocab, K)
+    train_centers, train_contexts = get_centers_and_contexts(train_walks, max_window_size=args.max_window_size)
+    train_negatives = get_negative(train_contexts, vocab, args.K)
     train_dataset = MulEdgeDataset(train_centers, train_contexts, train_negatives)
     collate_fn = Collate_fn(train_neighbors)
-    train_iter = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-    return train_iter, val_true_edge_data_by_type, val_false_edge_data_by_type, test_true_edge_data_by_type, test_false_edge_data_by_type, vocab
+    train_iter = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+    return train_iter, train_edge_data_by_type, train_neighbors, val_true_edge_data_by_type, val_false_edge_data_by_type, test_true_edge_data_by_type, test_false_edge_data_by_type, vocab
