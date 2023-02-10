@@ -97,7 +97,7 @@ def train(net, train_iter, val_scale: ValScale, val_iter, args):
     device = torch.device(args.device) if torch.cuda.is_available() else torch.device('cpu')
     net = net.to(device)
     loss = SigmoidBCELoss()
-    optimizer = torch.optim.AdamW(lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.AdamW(params=net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     if args.scheduler_lr:
         lr_scheduler = create_lr_scheduler(optimizer, args.num_batch, args.num_epoch)
@@ -116,13 +116,13 @@ def train(net, train_iter, val_scale: ValScale, val_iter, args):
             optimizer.zero_grad()
             centers, type_ids, neighbors, contexts_negatives, masks, labels = [data.to(device) for data in batch]
             pred = net(centers, type_ids, neighbors, contexts_negatives)
-            train_loss = loss(pred, labels)
-            train_loss.backword()
+            train_loss = (loss(pred.float(), labels.float(), masks) / masks.sum(axis=1) * masks.shape[1])
+            train_loss.sum().backward()
             optimizer.step()
             if args.scheduler_lr:
                 lr_scheduler.step()
             with torch.no_grad():
-                metric.add(train_loss.item(), i + 1)
+                metric.add(train_loss.sum().item(), i + 1)
             if total_batch % args.print_freq == 0:
                 net.eval()
                 lr_current = optimizer.param_groups[0]["lr"]

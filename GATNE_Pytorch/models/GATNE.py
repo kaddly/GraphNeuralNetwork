@@ -32,7 +32,7 @@ class GraphEncoder(nn.Module):
             self.u_embed_trans = nn.Parameter(torch.FloatTensor(edge_type_count, self.feature_dim, embedding_u_size))
         else:
             self.node_embeddings = nn.Parameter(torch.FloatTensor(num_nodes, embedding_size))
-            self.node_type_embeddings = nn.Parameter(torch.FloatTensor(num_nodes, edge_type_count, embedding_size))
+            self.node_type_embeddings = nn.Parameter(torch.FloatTensor(num_nodes, edge_type_count, embedding_u_size))
         # 定义MR矩阵
         self.trans_weights = nn.Parameter(
             torch.FloatTensor(edge_type_count, embedding_u_size, embedding_size)
@@ -110,7 +110,7 @@ class GraphDecoder(nn.Module):
         nn.init.xavier_uniform_(self.weights.data)
 
     def forward(self, embed, contest_negative):
-        pre = torch.bmm(embed, self.weights[contest_negative].permute(0, 2, 1))
+        pre = torch.bmm(embed.unsqueeze(1), self.weights[contest_negative].permute(0, 2, 1)).squeeze(1)
         return pre
 
 

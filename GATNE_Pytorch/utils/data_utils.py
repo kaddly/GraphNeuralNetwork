@@ -180,8 +180,8 @@ class Collate_fn:
             contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
             masks += [[1] * cur_len + [0] * (max_len - cur_len)]
             labels += [[1] * len(context) + [0] * (max_len - len(context))]
-        return (torch.tensor(centers).reshape((-1, 1))
-                , torch.tensor(type_ids).reshape((-1, 1))
+        return (torch.tensor(centers)
+                , torch.tensor(type_ids)
                 , torch.tensor(neighbors)
                 , torch.tensor(contexts_negatives)
                 , torch.tensor(masks)
