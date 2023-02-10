@@ -150,11 +150,11 @@ def train(net, train_iter, val_scale: ValScale, val_iter, args):
 
 
 def test(net, data_iter, val_scale: ValScale, args):
-    if not os.path.exists(os.path.join(os.path.abspath('.'), 'saved_dict', 'GATNE.ckpt')):
+    if not os.path.exists(os.path.join(os.path.abspath('.'), 'saved_dict', args.model)):
         print('please train before!')
         return
     device = torch.device(args.device) if torch.cuda.is_available() else torch.device('cpu')
-    net.load_state_dict(torch.load(os.path.join(os.path.abspath('.'), 'saved_dict', 'GATNE.ckpt')), False)
+    net.load_state_dict(torch.load(os.path.join(os.path.abspath('.'), 'saved_dict', args.model, args.model + '.ckpt')), False)
     net.eval()
     test_loss, test_acc, test_f1, test_rcl = val_scale.val_eval(net, device, *data_iter, args)
     print("Test set results:",

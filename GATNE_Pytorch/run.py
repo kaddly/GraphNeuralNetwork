@@ -38,21 +38,21 @@ def parse_args():
     parser.add_argument('--edge_dim', type=int, default=128,
                         help='Number of edge embedding dimensions. Default is 16.')
 
-    parser.add_argument('--att_dim', type=int, default=64,
+    parser.add_argument('--att_dim', type=int, default=128,
                         help='Number of attention dimensions. Default is 32.')
     # train parameter
     parser.add_argument('--model_dict_path', type=str, default='./saved_dict', help='Model Dict Saved Root')
     parser.add_argument('--model', type=str, default='GATNE')
     parser.add_argument('--num_epoch', type=int, default=100, help='Training Epochs')
-    parser.add_argument('--batch_size', type=int, default=256, help='Training Batches')
+    parser.add_argument('--batch_size', type=int, default=1024, help='Training Batches')
     parser.add_argument('--eval_type', type=str, default='all',
                         help='The edge type(s) for evaluation.')
     parser.add_argument("--device", default="cuda", help="training device")
     parser.add_argument('--lr', type=float, default=0.05, help='learning rate')
     parser.add_argument('--weight_decay', type=float, default=0.001, help='l2 reg')
     parser.add_argument('--is_current_train', type=bool, default=False, help='use current trained weight')
-    parser.add_argument('--print_freq', type=int, default=20, help='print val result frequent')
-    parser.add_argument('--Max_auto_stop_epoch', type=int, default=5000)
+    parser.add_argument('--print_freq', type=int, default=200, help='print val result frequent')
+    parser.add_argument('--Max_auto_stop_epoch', type=int, default=10000)
     parser.add_argument('--scheduler_lr', type=bool, default=False, help='create learning rate scheduler')
     return parser.parse_args()
 
