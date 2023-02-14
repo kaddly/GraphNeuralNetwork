@@ -48,7 +48,7 @@ def parse_args():
     parser.add_argument('--eval_type', type=str, default='all',
                         help='The edge type(s) for evaluation.')
     parser.add_argument("--device", default="cuda", help="training device")
-    parser.add_argument('--lr', type=float, default=0.05, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.1, help='learning rate')
     parser.add_argument('--weight_decay', type=float, default=0.001, help='l2 reg')
     parser.add_argument('--is_current_train', type=bool, default=False, help='use current trained weight')
     parser.add_argument('--print_freq', type=int, default=200, help='print val result frequent')
