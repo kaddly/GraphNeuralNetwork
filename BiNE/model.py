@@ -20,10 +20,10 @@ class Word2vec(nn.Module):
 
 
 class BiNEModel(nn.Module):
-    def __init__(self, vocab_size, embedding_size, **kwargs):
+    def __init__(self, user_vocab_size, item_vocab_size, embedding_size, **kwargs):
         super(BiNEModel, self).__init__(**kwargs)
-        self.user_net = Word2vec(vocab_size, embedding_size)
-        self.item_net = Word2vec(vocab_size, embedding_size)
+        self.user_net = Word2vec(user_vocab_size, embedding_size)
+        self.item_net = Word2vec(item_vocab_size, embedding_size)
 
     def user_implicit_relations(self, center, context_negative):
         return self.user_net(center, context_negative)
