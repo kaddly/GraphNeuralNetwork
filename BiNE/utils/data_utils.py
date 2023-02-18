@@ -1,24 +1,26 @@
 import os
 import torch
 from torch.utils.data import DataLoader, Dataset
-from utils.graph_utils import Vocab, HeteroGraph
+from utils.graph_utils import BipartiteGraph
 
 
 def read_data(data_set, file_name):
-    users, items, edge_weights = set(), set(), {}
+    users_list, items_list, weights_list = [], [], []
     file_path = os.path.join(os.path.abspath('.'), 'data', data_set, file_name)
     with open(file_path, 'r') as f:
         for line in f:
             user, item, edge_weight = line.strip().split()
-            if edge_weights.get(user) is None:
-                edge_weights[user] = {}
-            edge_weights[user][item] = float(edge_weight)
-            users.add(user)
-            items.add(item)
-    return users, items, edge_weights
+            users_list.append(user)
+            items_list.append(item)
+            weights_list.append(float(edge_weight))
+    return [users_list, items_list], weights_list
 
 
-def generator_hidden_relations():
+def generator_explicit_relations():
+    pass
+
+
+def generator_implicit_relations():
     pass
 
 
@@ -34,4 +36,6 @@ class BipartiteDataset(Dataset):
 
 
 def load_data(args):
-    users, items, edge_weights = read_data(args.data_set, args.file_name)
+    relation_list, weights_list = read_data(args.data_set, args.file_name)
+    BG = BipartiteGraph(relation_list, edge_types=['U', 'I'], meta_path=args.meta_path, edge_frames=weights_list, is_digraph=args.is_digraph)
+    user_vocab, item_vocab = BG.get_vocab

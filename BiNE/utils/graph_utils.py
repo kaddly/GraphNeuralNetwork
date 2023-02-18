@@ -1,5 +1,6 @@
 from scipy.sparse import csr_matrix
 import collections
+import networkx as nx
 
 
 # 词表
@@ -14,7 +15,7 @@ class Vocab:
         self._token_freqs = sorted(counter.items(), key=lambda x: x[1], reverse=True)
 
         # 未知词元索引为0
-        self.idx_to_token = ['<UNK>'] + reserved_tokens
+        self.idx_to_token = reserved_tokens
         self.token_to_idx = {token: idx for idx, token in enumerate(self.idx_to_token)}
         # self.idx_to_token, self.token_to_idx = [], dict()
         for token, freq in self._token_freqs:
@@ -138,3 +139,30 @@ class HeteroGraph(object):
         meta = "->".join(self.meta_path) if isinstance(self.meta_path[0], str) else ",".join(
             ["->".join(mp) for mp in self.meta_path])
         return ret.format(node=nnode_dict, edge=nedge_dict, meta=meta)
+
+
+class BipartiteGraph(HeteroGraph):
+    def __init__(self, relation_list, edge_types, meta_path, edge_frames, is_digraph):
+        self.G = nx.Graph()
+        self.relation_list = relation_list
+        self.users_vocab = Vocab(relation_list[0])
+        self.items_vocab = Vocab(relation_list[1])
+        super(BipartiteGraph, self).__init__(
+            graph_idx=[self.users_vocab[relation_list[0]], self.items_vocab[relation_list[1]]],
+            edge_types=edge_types,
+            meta_path=meta_path,
+            is_digraph=is_digraph,
+            edge_frames=edge_frames)
+        self.generatorGraph()
+
+    def generatorGraph(self):
+        assert isinstance(self.edge_types[0], str)
+        self.G.add_nodes_from(self.users_vocab.token_to_idx.keys(), bipartite=0)
+        self.G.add_nodes_from(self.items_vocab.token_to_idx.keys(), bipartite=1)
+        self.G.add_weighted_edges_from((*self.relation_list,
+                                        self.edge_features)) if self.is_digraph else self.G.add_weighted_edges_from(
+            (*self.relation_list, self.edge_features) + (*self.relation_list[::-1], self.edge_features))
+
+    @property
+    def get_vocab(self):
+        return self.users_vocab, self.items_vocab
