@@ -19,8 +19,9 @@ class Word2vec(nn.Module):
         return skip_gram(center, context_negative, self.V, self.U)
 
 
-class BiNEModel:
-    def __init__(self, vocab_size, embedding_size):
+class BiNEModel(nn.Module):
+    def __init__(self, vocab_size, embedding_size, **kwargs):
+        super(BiNEModel, self).__init__(**kwargs)
         self.user_net = Word2vec(vocab_size, embedding_size)
         self.item_net = Word2vec(vocab_size, embedding_size)
 
@@ -35,3 +36,8 @@ class BiNEModel:
         item_embed = self.item_net.V(neighbors)
         pred = torch.bmm(user_embed, item_embed.permute(0, 2, 1))
         return pred
+
+    def forward(self, user_center, user_context_negative, item_center, item_context_negative, neighbors):
+        return self.explicit_relations(user_center, neighbors), \
+               self.user_implicit_relations(user_center, user_context_negative), \
+               self.item_implicit_relations(item_center, item_context_negative)
