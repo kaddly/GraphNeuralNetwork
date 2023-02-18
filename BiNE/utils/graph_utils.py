@@ -163,6 +163,39 @@ class BipartiteGraph(HeteroGraph):
                                         self.edge_features)) if self.is_digraph else self.G.add_weighted_edges_from(
             (*self.relation_list, self.edge_features) + (*self.relation_list[::-1], self.edge_features))
 
+    def calculate_centrality(self, mode='hits'):
+        authority_u, authority_v = {}, {}
+        if mode == 'degree_centrality':
+            a = nx.degree_centrality(self.G)
+        else:
+            _, a = nx.hits(self.G)  # hub, authority
+
+        max_a_u, min_a_u, max_a_v, min_a_v = 0, 100000, 0, 100000
+
+        for node in self.G.nodes():  # u,v类别的authority的值
+            if node[0] == "u":
+                if max_a_u < a[node]:
+                    max_a_u = a[node]
+                if min_a_u > a[node]:
+                    min_a_u = a[node]
+            if node[0] == "i":
+                if max_a_v < a[node]:
+                    max_a_v = a[node]
+                if min_a_v > a[node]:
+                    min_a_v = a[node]
+        for node in self.G.nodes():  # 计算每个节点归一化后的authority值
+            if node[0] == "u":
+                if max_a_u-min_a_u != 0:
+                    authority_u[node] = (float(a[node])-min_a_u) / (max_a_u-min_a_u)
+                else:
+                    authority_u[node] = 0
+            if node[0] == 'i':
+                if max_a_v-min_a_v != 0:
+                    authority_v[node] = (float(a[node])-min_a_v) / (max_a_v-min_a_v)
+                else:
+                    authority_v[node] = 0
+        return authority_u, authority_v
+
     @property
     def get_vocab(self):
         return self.users_vocab, self.items_vocab
