@@ -30,14 +30,13 @@ class RandomWalker:
         self.vocab = vocab
         self.maxT = maxT
         self.minT = minT
-        self.rand = random.Random()
         self.p = percentage
         self.hits_dict = hits_dict
         self.num_workers = num_workers
 
     def node_list(self, nodes):
         for node in nodes:
-            num_walks = max(int(math.ceil(self.maxT*self.hits_dict[node])), self.minT)
+            num_walks = max(int(math.ceil(self.maxT * self.hits_dict[node])), self.minT)
             for _ in range(num_walks):
                 yield node
 
@@ -49,6 +48,15 @@ class RandomWalker:
         return all_walks
 
     def _simulate_walks(self, start):
-        pass
-
-
+        walk = [self.vocab[start]]
+        while len(walk) < 1 or random.random() > self.p:
+            cur = walk[-1]
+            neighbors = self.meta_path_adj[cur].nonzero()
+            if len(neighbors) > 0:
+                add_node = random.choice(neighbors)
+                while add_node == cur:  # 如果是同一个节点，重新选择；前面我们已经去重自连接边了；
+                    add_node = random.choice(neighbors)
+                walk.append(add_node)
+            else:
+                break
+        return walk

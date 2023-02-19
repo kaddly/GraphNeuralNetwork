@@ -103,8 +103,7 @@ class HeteroGraph(object):
         data = [1 for _ in range(len(relation[0]))] if self.edge_features is None else self.edge_features
         return csr_matrix((data, relation), shape=(len(src), len(dst)))
 
-    @property
-    def meta_path_adj(self, meta_path=None):
+    def meta_path_adj(self, meta_path=None, isSelfConnect=False):
         self.meta_path = meta_path if meta_path is not None else self.meta_path
         meta_path_adj = None
         if isinstance(self.meta_path[0], str):
@@ -113,8 +112,11 @@ class HeteroGraph(object):
                     meta_path_adj = self.HG_adj[self.meta_path[i] + '->' + self.meta_path[i + 1]]
                 else:
                     meta_path_adj = meta_path_adj * self.HG_adj[self.meta_path[i] + '->' + self.meta_path[i + 1]]
-                    mask = meta_path_adj > 0
-                    meta_path_adj[mask] = 1
+            if not isSelfConnect:
+                l = len(meta_path_adj[0])
+                row = list(range(l))
+                eye = csr_matrix(([1 for _ in range(l)], [row, row]), shape=(l, l))
+                meta_path_adj -= eye
             return meta_path_adj
         else:
             meta_paths_adj = []
@@ -124,8 +126,11 @@ class HeteroGraph(object):
                         meta_path_adj = self.HG_adj[mp[i] + '->' + mp[i + 1]]
                     else:
                         meta_path_adj = meta_path_adj * self.HG_adj[mp[i] + '->' + mp[i + 1]]
-                        mask = meta_path_adj > 0
-                        meta_path_adj[mask] = 1
+                if not isSelfConnect:
+                    l = len(meta_path_adj[0])
+                    row = list(range(l))
+                    eye = csr_matrix(([1 for _ in range(l)], [row, row]), shape=(l, l))
+                    meta_path_adj -= eye
                 meta_paths_adj.append(meta_path_adj)
                 meta_path_adj = None
             return meta_paths_adj
@@ -185,13 +190,13 @@ class BipartiteGraph(HeteroGraph):
                     min_a_v = a[node]
         for node in self.G.nodes():  # 计算每个节点归一化后的authority值
             if node[0] == "u":
-                if max_a_u-min_a_u != 0:
-                    authority_u[node] = (float(a[node])-min_a_u) / (max_a_u-min_a_u)
+                if max_a_u - min_a_u != 0:
+                    authority_u[node] = (float(a[node]) - min_a_u) / (max_a_u - min_a_u)
                 else:
                     authority_u[node] = 0
             if node[0] == 'i':
-                if max_a_v-min_a_v != 0:
-                    authority_v[node] = (float(a[node])-min_a_v) / (max_a_v-min_a_v)
+                if max_a_v - min_a_v != 0:
+                    authority_v[node] = (float(a[node]) - min_a_v) / (max_a_v - min_a_v)
                 else:
                     authority_v[node] = 0
         return authority_u, authority_v
