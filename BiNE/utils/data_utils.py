@@ -64,13 +64,15 @@ def generator_explicit_relations():
     pass
 
 
-def generator_implicit_relations(corpus, vocab):
-    pass
+def generator_implicit_relations(corpus, vocab, max_window_size, K):
+    centers, all_contexts = get_centers_and_contexts(corpus, max_window_size)
+    all_negatives = get_negative(all_contexts, vocab, K)
+    return centers, all_contexts, all_negatives
 
 
 class BipartiteDataset(Dataset):
-    def __init__(self):
-        pass
+    def __init__(self, user_centers, user_contexts, user_negatives, item_centers, item_contexts, item_negatives):
+        assert len(user_centers) == len(user_contexts)
 
     def __len__(self):
         pass
@@ -89,3 +91,7 @@ def load_data(args):
                                   percentage=args.percentage, hits_dict=u_hits_dict)
     item_corpus = generator_walks(meta_path=['I', 'U', 'I'], BG=BG, vocab=item_vocab, maxT=args.maxT, minT=args.minT,
                                   percentage=args.percentage, hits_dict=i_hits_dict)
+    user_centers, user_contexts, user_negatives = generator_implicit_relations(user_corpus, user_vocab,
+                                                                               args.max_window_size, args.K)
+    item_centers, item_contexts, item_negatives = generator_implicit_relations(item_corpus, item_vocab,
+                                                                               args.max_window_size, args.K)
