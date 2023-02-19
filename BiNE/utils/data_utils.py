@@ -20,8 +20,9 @@ def generator_explicit_relations():
     pass
 
 
-def generator_implicit_relations():
-    pass
+def generator_implicit_relations(meta_path, BG: BipartiteGraph, vocab, maxT, minT, percentage, hits_dict):
+    assert meta_path[0] == meta_path[-1]
+    adj = BG.meta_path_adj(meta_path)
 
 
 class BipartiteDataset(Dataset):
@@ -37,5 +38,6 @@ class BipartiteDataset(Dataset):
 
 def load_data(args):
     relation_list, weights_list = read_data(args.data_set, args.file_name)
-    BG = BipartiteGraph(relation_list, edge_types=['U', 'I'], meta_path=args.meta_path, edge_frames=weights_list, is_digraph=args.is_digraph)
+    BG = BipartiteGraph(relation_list, edge_types=['U', 'I'], meta_path=args.meta_path, edge_frames=weights_list,
+                        is_digraph=args.is_digraph)
     user_vocab, item_vocab = BG.get_vocab
