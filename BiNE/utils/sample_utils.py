@@ -51,8 +51,8 @@ class RandomWalker:
         walk = [self.vocab[start]]
         while len(walk) < 1 or random.random() > self.p:
             cur = walk[-1]
-            neighbors = self.meta_path_adj[cur].nonzero()
-            if len(neighbors) > 0:
+            neighbors = self.meta_path_adj[cur].nonzero()[1]
+            if len(neighbors) > 1:
                 add_node = random.choice(neighbors)
                 while add_node == cur:  # 如果是同一个节点，重新选择；前面我们已经去重自连接边了；
                     add_node = random.choice(neighbors)

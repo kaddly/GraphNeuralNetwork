@@ -47,7 +47,7 @@ def get_negative(contexts, vocab, K):
     # 索引为1、2、...（索引0是词表中排除的未知标记）
     sampling_weights = [vocab.token_counter[vocab.to_tokens(i)] ** 0.75 for i in range(1, len(vocab))]
     all_negatives, generator = {}, RandomGenerator(sampling_weights)
-    for center, context in contexts:
+    for center, context in contexts.items():
         if center not in all_negatives:
             all_negatives[center] = []
         negatives = []
@@ -79,6 +79,7 @@ def setup_logging(run_name):
 
 
 def ContextsNegativesProcess(data):
+    data = list(map(list, zip(*data)))
     max_len = max(len(c) + len(n) for c, n in data)
     contexts_negatives, masks, labels = [], [], []
     for context, negative in data:
@@ -97,14 +98,16 @@ class ContextsNegativesGenerator:
         self.item_negatives = item_negatives
 
     def get_contexts_negatives_masks_labels(self, user_center, item_center, weights):
-        assert len(self.user_contexts.get(user_center)) == len(self.user_negatives.get(user_center)) and len(
-            self.item_contexts.get(item_center)) == len(self.item_negatives.get(item_center))
+        assert len(self.user_contexts.get(user_center, [])) == len(self.user_negatives.get(user_center, [])) and len(
+            self.item_contexts.get(item_center, [])) == len(self.item_negatives.get(item_center, []))
         user_contexts_negatives, user_masks, user_labels = ContextsNegativesProcess(
-            (self.user_contexts.get(user_center), self.user_negatives.get(user_center)))
+            [self.user_contexts.get(user_center, [[user_center]]),
+             self.user_negatives.get(user_center, [[random.choice(list(self.user_contexts.keys()))]])])
         item_contexts_negatives, item_masks, item_labels = ContextsNegativesProcess(
-            (self.item_contexts.get(item_center), self.item_negatives.get(item_center)))
-        return torch.tensor(user_center), torch.tensor(item_center), torch.Tensor(weights),\
-               torch.tensor(user_contexts_negatives), torch.tensor(user_masks), torch.tensor(user_labels),\
+            [self.item_contexts.get(item_center, [[item_center]]),
+             self.item_negatives.get(item_center, [[random.choice(list(self.item_contexts.keys()))]])])
+        return torch.tensor([user_center]).reshape(-1, 1), torch.tensor([item_center]).reshape(-1, 1), torch.Tensor([weights]), \
+               torch.tensor(user_contexts_negatives), torch.tensor(user_masks), torch.tensor(user_labels), \
                torch.tensor(item_contexts_negatives), torch.tensor(item_masks), torch.tensor(item_labels)
 
 
@@ -121,5 +124,5 @@ def load_data(args):
     user_contexts, user_negatives = generator_implicit_relations(user_corpus, user_vocab, args.max_window_size, args.K)
     item_contexts, item_negatives = generator_implicit_relations(item_corpus, item_vocab, args.max_window_size, args.K)
     testDataset = readTestDataset(args.data_set, args.test_file_name, user_vocab, item_vocab)
-    return (user_vocab[relation_list[0]], item_vocab[relation_list[1]],
-            weights_list), testDataset, user_contexts, user_negatives, item_contexts, item_negatives, user_vocab, item_vocab
+    return list(map(list, zip(*(user_vocab[relation_list[0]], item_vocab[relation_list[1]],
+                                weights_list)))), testDataset, user_contexts, user_negatives, item_contexts, item_negatives, user_vocab, item_vocab

@@ -35,5 +35,5 @@ class BiNEModel:
     def explicit_relations(self, user_center, item_center):
         user_embed = self.user_net.V(user_center)
         item_embed = self.item_net.V(item_center)
-        pred = torch.bmm(user_embed, item_embed)
+        pred = torch.bmm(user_embed, item_embed.permute(0, 2, 1))
         return pred

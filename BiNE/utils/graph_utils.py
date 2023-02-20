@@ -11,10 +11,9 @@ class Vocab:
         if reserved_tokens is None:
             reserved_tokens = []
         # 按照频率统计出现的次数
-        counter = count_corpus(tokens)
-        self._token_freqs = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+        self.counter = count_corpus(tokens)
+        self._token_freqs = sorted(self.counter.items(), key=lambda x: x[1], reverse=True)
 
-        # 未知词元索引为0
         self.idx_to_token = reserved_tokens
         self.token_to_idx = {token: idx for idx, token in enumerate(self.idx_to_token)}
         # self.idx_to_token, self.token_to_idx = [], dict()
@@ -45,6 +44,10 @@ class Vocab:
     @property
     def token_freqs(self):
         return self._token_freqs
+
+    @property
+    def token_counter(self):
+        return self.counter
 
 
 def count_corpus(tokens):
@@ -113,10 +116,8 @@ class HeteroGraph(object):
                 else:
                     meta_path_adj = meta_path_adj * self.HG_adj[self.meta_path[i] + '->' + self.meta_path[i + 1]]
             if not isSelfConnect:
-                l = meta_path_adj.shape[0]
-                row = list(range(l))
-                eye = csr_matrix(([1 for _ in range(l)], [row, row]), shape=(l, l))
-                meta_path_adj -= eye
+                row = list(range(meta_path_adj.shape[0]))
+                meta_path_adj._set_arrayXarray(row, row, 0.0)
             return meta_path_adj
         else:
             meta_paths_adj = []

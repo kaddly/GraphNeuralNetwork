@@ -18,7 +18,7 @@ def launch():
     args.gamma = 0.1
     args.print_freq = 100
     args.Max_auto_stop_epoch = 1e5
-    args.device = "cuda"
+    args.device = "cpu"
     args.lr = 1e-2
     # data
     args.data_set = 'wiki'

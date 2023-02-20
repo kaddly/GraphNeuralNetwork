@@ -18,9 +18,10 @@ def evaluateTestSet(model: BiNEModel, data_iter, device=None):
         device = next(iter(model.user_net)).device
     with torch.no_grad():
         users, items, labels = [data.to(device) for data in data_iter]
-        pred = model.explicit_relations(users, items)
-    return accuracy(pred, labels, 2), F.binary_cross_entropy_with_logits(pred, labels).mean(), f_beta_score(pred,
-                                                                                                            labels, 2)
+        pred = model.explicit_relations(users.reshape(-1, 1), items.reshape(-1, 1))
+    return accuracy(pred, labels, 2), F.binary_cross_entropy_with_logits(pred.reshape(labels.shape),
+                                                                         labels).mean(), f_beta_score(pred,
+                                                                                                      labels, 2).mean()
 
 
 def train(args):
@@ -30,8 +31,11 @@ def train(args):
         args)
     data_tool = ContextsNegativesGenerator(user_contexts, user_negatives, item_contexts, item_negatives)
     model = BiNEModel(len(user_vocab), len(item_vocab), args.embedding_size)
+    model.user_net.to(device)
+    model.item_net.to(device)
     loss = SigmoidBCELoss()
-    optimizer = torch.optim.AdamW([{"params": model.user_net}, {"params": model.item_net}], lr=args.lr,
+    optimizer = torch.optim.AdamW([{"params": model.user_net.parameters()}, {"params": model.item_net.parameters()}],
+                                  lr=args.lr,
                                   weight_decay=args.weight_decay)
 
     logger = SummaryWriter(os.path.join("runs", args.run_name))
@@ -53,9 +57,9 @@ def train(args):
             pred = model.explicit_relations(u, i)
             u_hat = model.user_implicit_relations(u, u_cn)
             i_hat = model.item_implicit_relations(i, i_cn)
-            o1 = F.binary_cross_entropy_with_logits(pred, w)
-            o2 = (loss(u_hat.float(), u_l.float(), u_m) / u_m.sum(axis=1) * u_m.shape[1])
-            o3 = (loss(i_hat.float(), i_l.float(), i_m) / i_m.sum(axis=1) * i_m.shape[1])
+            o1 = F.binary_cross_entropy_with_logits(pred.reshape(w.shape), w)
+            o2 = (loss(u_hat.reshape(u_l.shape).float(), u_l.float(), u_m) / u_m.sum(axis=1) * u_m.shape[1])
+            o3 = (loss(i_hat.reshape(i_l.shape).float(), i_l.float(), i_m) / i_m.sum(axis=1) * i_m.shape[1])
             train_loss = args.alpha * o1.mean() + args.beta * o2.sum() + args.gamma * o3.sum()
             train_loss.backward()
             optimizer.step()
@@ -64,13 +68,13 @@ def train(args):
             with torch.no_grad():
                 u_f1 = f_beta_score(u_hat, u_l, 2, u_m)
                 i_f1 = f_beta_score(i_hat, i_l, 2, i_m)
-                pBar.set_postfix({'train loss': '{0:>5.4f}'.format(train_loss.item),
-                                  'user f1 score': '{0:>6.2%}'.format(u_f1),
-                                  'item f1 score': '{0:>6.2%}'.format(i_f1),
+                pBar.set_postfix({'train loss': '{0:>5.4f}'.format(train_loss.item()),
+                                  'user f1 score': '{0:>6.2%}'.format(u_f1.mean().item()),
+                                  'item f1 score': '{0:>6.2%}'.format(i_f1.mean().item()),
                                   'lr': '{0:>5.4}'.format(optimizer.param_groups[0]["lr"])})
             logger.add_scalar("train loss", train_loss.item(), global_step=total_num)
-            logger.add_scalar('user f1 scare', u_f1.item(), global_step=total_num)
-            logger.add_scalar('item f1 scare', i_f1.item(), global_step=total_num)
+            logger.add_scalar('user f1 scare', u_f1.mean().item(), global_step=total_num)
+            logger.add_scalar('item f1 scare', i_f1.mean().item(), global_step=total_num)
 
             if total_num % args.print_freq == 0:
                 model.user_net.eval()
@@ -87,7 +91,8 @@ def train(args):
                     improve = ''
                 time_dif = timedelta(seconds=int(round(time.time() - start_time)))
                 msg = 'Iter: {0},  Train Loss: {1:>5.4},  Train lr: {2:>5.4},  val loss: {3:>5.4},  val Acc: {4:>6.2%},  val f1 score: {5:6.2%},  Time: {6} {7}'
-                logging.info(msg.format(total_num, train_loss, lr_current, test_loss, test_acc, test_f1, time_dif, improve))
+                logging.info(
+                    msg.format(total_num, train_loss, lr_current, test_loss, test_acc, test_f1, time_dif, improve))
                 model.user_net.train()
                 model.item_net.train()
             total_num += 1
