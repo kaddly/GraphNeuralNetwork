@@ -78,6 +78,36 @@ def setup_logging(run_name):
     os.makedirs(os.path.join("results", run_name), exist_ok=True)
 
 
+def ContextsNegativesProcess(data):
+    max_len = max(len(c) + len(n) for c, n in data)
+    contexts_negatives, masks, labels = [], [], []
+    for context, negative in data:
+        cur_len = len(context) + len(negative)
+        contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
+        masks += [[1] * cur_len + [0] * (max_len - cur_len)]
+        labels += [[1] * len(context) + [0] * (max_len - len(context))]
+    return contexts_negatives, masks, labels
+
+
+class ContextsNegativesGenerator:
+    def __init__(self, user_contexts, user_negatives, item_contexts, item_negatives):
+        self.user_contexts = user_contexts
+        self.user_negatives = user_negatives
+        self.item_contexts = item_contexts
+        self.item_negatives = item_negatives
+
+    def get_contexts_negatives_masks_labels(self, user_center, item_center, weights):
+        assert len(self.user_contexts.get(user_center)) == len(self.user_negatives.get(user_center)) and len(
+            self.item_contexts.get(item_center)) == len(self.item_negatives.get(item_center))
+        user_contexts_negatives, user_masks, user_labels = ContextsNegativesProcess(
+            (self.user_contexts.get(user_center), self.user_negatives.get(user_center)))
+        item_contexts_negatives, item_masks, item_labels = ContextsNegativesProcess(
+            (self.item_contexts.get(item_center), self.item_negatives.get(item_center)))
+        return torch.tensor(user_center), torch.tensor(item_center), torch.Tensor(weights),\
+               torch.tensor(user_contexts_negatives), torch.tensor(user_masks), torch.tensor(user_labels),\
+               torch.tensor(item_contexts_negatives), torch.tensor(item_masks), torch.tensor(item_labels)
+
+
 def load_data(args):
     relation_list, weights_list = read_data(args.data_set, args.file_name)
     BG = BipartiteGraph(relation_list, edge_types=['U', 'I'], meta_path=args.meta_path, edge_frames=weights_list,
