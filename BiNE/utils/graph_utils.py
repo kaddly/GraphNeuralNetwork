@@ -113,7 +113,7 @@ class HeteroGraph(object):
                 else:
                     meta_path_adj = meta_path_adj * self.HG_adj[self.meta_path[i] + '->' + self.meta_path[i + 1]]
             if not isSelfConnect:
-                l = len(meta_path_adj[0])
+                l = meta_path_adj.shape[0]
                 row = list(range(l))
                 eye = csr_matrix(([1 for _ in range(l)], [row, row]), shape=(l, l))
                 meta_path_adj -= eye
@@ -164,9 +164,10 @@ class BipartiteGraph(HeteroGraph):
         assert isinstance(self.edge_types[0], str)
         self.G.add_nodes_from(self.users_vocab.token_to_idx.keys(), bipartite=0)
         self.G.add_nodes_from(self.items_vocab.token_to_idx.keys(), bipartite=1)
-        self.G.add_weighted_edges_from((*self.relation_list,
-                                        self.edge_features)) if self.is_digraph else self.G.add_weighted_edges_from(
-            (*self.relation_list, self.edge_features) + (*self.relation_list[::-1], self.edge_features))
+        self.G.add_weighted_edges_from(list(map(list, zip(
+            *(*self.relation_list, self.edge_features))))) if self.is_digraph else self.G.add_weighted_edges_from(
+            list(map(list, zip(*(*self.relation_list, self.edge_features)))) + list(
+                map(list, zip(*(*self.relation_list[::-1], self.edge_features)))))
 
     def calculate_centrality(self, mode='hits'):
         authority_u, authority_v = {}, {}

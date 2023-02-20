@@ -13,8 +13,14 @@ from .optimizer_utils import create_lr_scheduler
 from .scale_utils import f_beta_score, accuracy
 
 
-def evaluateTestSet(model, device):
-    pass
+def evaluateTestSet(model: BiNEModel, data_iter, device=None):
+    if not device:
+        device = next(iter(model.user_net)).device
+    with torch.no_grad():
+        users, items, labels = [data.to(device) for data in data_iter]
+        pred = model.explicit_relations(users, items)
+    return accuracy(pred, labels, 2), F.binary_cross_entropy_with_logits(pred, labels).mean(), f_beta_score(pred,
+                                                                                                            labels, 2)
 
 
 def train(args):
@@ -50,20 +56,44 @@ def train(args):
             o1 = F.binary_cross_entropy_with_logits(pred, w)
             o2 = (loss(u_hat.float(), u_l.float(), u_m) / u_m.sum(axis=1) * u_m.shape[1])
             o3 = (loss(i_hat.float(), i_l.float(), i_m) / i_m.sum(axis=1) * i_m.shape[1])
-            train_loss = args.alpha * o1 + args.beta * o2.sum() + args.gamma * o3.sum()
+            train_loss = args.alpha * o1.mean() + args.beta * o2.sum() + args.gamma * o3.sum()
             train_loss.backward()
             optimizer.step()
             if args.scheduler_lr:
                 lr_scheduler.step()
-            pBar.set_postfix(train_loss=train_loss.item(), lr=optimizer.param_groups[0]["lr"])
-            logger.add_scalar("train_loss", train_loss.item(), global_step=total_num)
+            with torch.no_grad():
+                u_f1 = f_beta_score(u_hat, u_l, 2, u_m)
+                i_f1 = f_beta_score(i_hat, i_l, 2, i_m)
+                pBar.set_postfix({'train loss': '{0:>5.4f}'.format(train_loss.item),
+                                  'user f1 score': '{0:>6.2%}'.format(u_f1),
+                                  'item f1 score': '{0:>6.2%}'.format(i_f1),
+                                  'lr': '{0:>5.4}'.format(optimizer.param_groups[0]["lr"])})
+            logger.add_scalar("train loss", train_loss.item(), global_step=total_num)
+            logger.add_scalar('user f1 scare', u_f1.item(), global_step=total_num)
+            logger.add_scalar('item f1 scare', i_f1.item(), global_step=total_num)
 
             if total_num % args.print_freq == 0:
-                pass
+                model.user_net.eval()
+                model.item_net.eval()
+                lr_current = optimizer.param_groups[0]["lr"]
+                test_acc, test_loss, test_f1 = evaluateTestSet(model, test_iter, device)
+                if test_loss < best_loss:
+                    torch.save(model.user_net.state_dict(), os.path.join("models", args.run_name, f"userNet.pt"))
+                    torch.save(model.item_net.state_dict(), os.path.join("models", args.run_name, f"itemNet.pt"))
+                    best_loss = test_loss
+                    improve = '*'
+                    last_improve = total_num
+                else:
+                    improve = ''
+                time_dif = timedelta(seconds=int(round(time.time() - start_time)))
+                msg = 'Iter: {0},  Train Loss: {1:>5.4},  Train lr: {2:>5.4},  val loss: {3:>5.4},  val Acc: {4:>6.2%},  val f1 score: {5:6.2%},  Time: {6} {7}'
+                logging.info(msg.format(total_num, train_loss, lr_current, test_loss, test_acc, test_f1, time_dif, improve))
+                model.user_net.train()
+                model.item_net.train()
             total_num += 1
             if total_num - last_improve > args.Max_auto_stop_epoch:
                 # 验证集loss超过1000batch没下降，结束训练
-                print("No optimization for a long time, auto-stopping...")
+                logging.info("No optimization for a long time, auto-stopping...")
                 flag = True
                 break
         if flag:

@@ -66,9 +66,9 @@ def generator_implicit_relations(corpus, vocab, max_window_size, K):
     return all_contexts, all_negatives
 
 
-def readTestDataset(data_set, file_name):
+def readTestDataset(data_set, file_name, user_vocab, item_vocab):
     [users, items], labels = read_data(data_set, file_name)
-    return torch.tensor(users), torch.tensor(items), torch.tensor(labels)
+    return torch.tensor(user_vocab[users]), torch.tensor(item_vocab[items]), torch.tensor(labels)
 
 
 def setup_logging(run_name):
@@ -109,8 +109,8 @@ class ContextsNegativesGenerator:
 
 
 def load_data(args):
-    relation_list, weights_list = read_data(args.data_set, args.file_name)
-    BG = BipartiteGraph(relation_list, edge_types=['U', 'I'], meta_path=args.meta_path, edge_frames=weights_list,
+    relation_list, weights_list = read_data(args.data_set, args.train_file_name)
+    BG = BipartiteGraph(relation_list, edge_types=['U', 'I'], meta_path=['U', 'I', 'U'], edge_frames=weights_list,
                         is_digraph=args.is_digraph)
     user_vocab, item_vocab = BG.get_vocab
     u_hits_dict, i_hits_dict = BG.calculate_centrality()
@@ -120,6 +120,6 @@ def load_data(args):
                                   percentage=args.percentage, hits_dict=i_hits_dict)
     user_contexts, user_negatives = generator_implicit_relations(user_corpus, user_vocab, args.max_window_size, args.K)
     item_contexts, item_negatives = generator_implicit_relations(item_corpus, item_vocab, args.max_window_size, args.K)
-    testDataset = readTestDataset(args.data_set, args.test_file_name)
+    testDataset = readTestDataset(args.data_set, args.test_file_name, user_vocab, item_vocab)
     return (user_vocab[relation_list[0]], item_vocab[relation_list[1]],
             weights_list), testDataset, user_contexts, user_negatives, item_contexts, item_negatives, user_vocab, item_vocab
