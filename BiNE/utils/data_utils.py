@@ -1,7 +1,6 @@
 import os
 import random
 import torch
-from torch.utils.data import DataLoader, Dataset
 from utils.graph_utils import BipartiteGraph
 from utils.sample_utils import RandomWalker, RandomGenerator
 
@@ -67,73 +66,16 @@ def generator_implicit_relations(corpus, vocab, max_window_size, K):
     return all_contexts, all_negatives
 
 
-class BipartiteDataset(Dataset):
-    def __init__(self, u, v, w):
-        assert len(u) == len(v) == len(w)
-        self.u = u
-        self.v = v
-        self.w = w
-
-    def __len__(self):
-        return len(self.w)
-
-    def __getitem__(self, item):
-        return self.w[item], self.v[item], self.w[item]
-
-
-def generator_contexts_negatives_mask_label(contexts, negatives, max_len):
-    contexts_negatives, masks, labels = [], [], []
-    for context, negative in zip(contexts, negatives):
-        cur_len = len(context) + len(negative)
-        contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
-        masks += [[1] * cur_len + [0] * (max_len - cur_len)]
-        labels += [[1] * len(context) + [0] * (max_len - len(context))]
-    return contexts_negatives, masks, labels
-
-
-class Collate_fn:
-    def __init__(self, u_c, u_n, i_c, i_n):
-        self.u_c = u_c
-        self.u_n = u_n
-        self.i_c = i_c
-        self.i_n = i_n
-
-    def __call__(self, data):
-        batch_max_u, batch_max_i = 0, 0
-        for u, i, _ in data:
-            u_contexts = self.u_c[u]
-            u_negatives = self.u_n[u]
-            max_u = max(len(u_context) + len(u_negative) for u_context, u_negative in zip(u_contexts, u_negatives))
-            if max_u > batch_max_u:
-                batch_max_u = max_u
-            i_contexts = self.i_c[u]
-            i_negatives = self.i_n[u]
-            max_i = max(len(i_context) + len(i_negative) for i_context, i_negative in zip(i_contexts, i_negatives))
-            if max_i > batch_max_i:
-                batch_max_i = max_i
-        users, items, weights, user_contexts_negatives, item_contexts_negatives, user_masks, item_masks, user_labels, item_labels = [], [], [], [], [], [], [], [], []
-        for u, i, w in data:
-            users += u
-            items += i
-            weights += w
-            contexts_negatives, masks, labels = generator_contexts_negatives_mask_label(self.u_c[u], self.u_n[u],
-                                                                                        batch_max_u)
-            user_contexts_negatives.append(contexts_negatives)
-            user_masks.append(masks)
-            user_labels.append(labels)
-            contexts_negatives, masks, labels = generator_contexts_negatives_mask_label(self.i_c[i], self.i_n[i],
-                                                                                        batch_max_i)
-            item_contexts_negatives.append(contexts_negatives)
-            item_masks.append(masks)
-            item_labels.append(labels)
-        return (torch.tensor(users), torch.tensor(items), torch.Tensor(weights),
-                torch.tensor(user_contexts_negatives), torch.tensor(user_masks), torch.tensor(user_labels),
-                torch.tensor(item_contexts_negatives), torch.tensor(item_masks), torch.tensor(item_labels))
-
-
 def readTestDataset(data_set, file_name):
     [users, items], labels = read_data(data_set, file_name)
     return torch.tensor(users), torch.tensor(items), torch.tensor(labels)
+
+
+def setup_logging(run_name):
+    os.makedirs("models", exist_ok=True)
+    os.makedirs("results", exist_ok=True)
+    os.makedirs(os.path.join("models", run_name), exist_ok=True)
+    os.makedirs(os.path.join("results", run_name), exist_ok=True)
 
 
 def load_data(args):
@@ -148,8 +90,6 @@ def load_data(args):
                                   percentage=args.percentage, hits_dict=i_hits_dict)
     user_contexts, user_negatives = generator_implicit_relations(user_corpus, user_vocab, args.max_window_size, args.K)
     item_contexts, item_negatives = generator_implicit_relations(item_corpus, item_vocab, args.max_window_size, args.K)
-    train_dataset = BipartiteDataset(user_vocab[relation_list[0]], item_vocab[relation_list[1]], weights_list)
-    collate_fn = Collate_fn(user_contexts, user_negatives, item_contexts, item_negatives)
-    train_iter = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
     testDataset = readTestDataset(args.data_set, args.test_file_name)
-    return train_iter, testDataset
+    return (user_vocab[relation_list[0]], item_vocab[relation_list[1]],
+            weights_list), testDataset, user_contexts, user_negatives, item_contexts, item_negatives, user_vocab, item_vocab
